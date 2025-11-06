@@ -85,22 +85,100 @@ make dev
 ```text
 
 aluguei/
-├── 📁 backend/                 # API em Go
-│   ├── cmd/api/               # Application entrypoint
-│   ├── internal/              # Código interno do projeto
-│   │   ├── handlers/          # HTTP handlers
-│   │   ├── models/            # Entidades de domínio
-│   │   ├── services/          # Lógica de negócio
-│   │   └── database/          # Configuração do DB
-│   └── pkg/                   # Código compartilhável
-├── 📁 frontend/               # Aplicação React/Next.js
-│   ├── components/            # Componentes reutilizáveis
-│   ├── pages/                 # Rotas e páginas
-│   ├── stores/                # Gerenciamento de estado
-│   └── styles/                # Estilos globais
-├── 📁 docs/                   # Documentação completa
-├── 📁 deployments/            # Configurações de deploy
-└── 📁 scripts/                # Scripts utilitários
+├── LICENSE
+├── README.md
+├── scripts
+└── src
+    └── Backend
+        ├── cmd
+        │   └── api
+        │       └── main.go
+        ├── deployments
+        │   ├── docker-compose.yml
+        │   └── migrations
+        ├── docs
+        │   ├── 01_Objetivo.md
+        │   ├── 02_MVPs.md
+        │   ├── 03_Entidades.md
+        │   ├── 04_UserStories.md
+        │   ├── 05_BancoDeDados.md
+        │   ├── 06_Arquitetura.md
+        │   ├── 07_Fluxos.md
+        │   ├── 08_Stack.md
+        │   ├── 09_MétricasDeAceitação.md
+        │   ├── 10_Segurança.md
+        │   └── swagger.yaml
+        ├── go.mod
+        ├── go.sum
+        ├── internal
+        │   ├── config
+        │   │   └── config.go
+        │   ├── database
+        │   │   ├── gorm_logger.go
+        │   │   └── postgre.go
+        │   ├── errors
+        │   │   └── app_errors.go
+        │   ├── handlers
+        │   ├── middlewares
+        │   │   ├── auth.go
+        │   │   ├── cors.go
+        │   │   └── logging.go
+        │   ├── models
+        │   │   ├── contract.go
+        │   │   ├── owner.go
+        │   │   ├── payment.go
+        │   │   ├── property.go
+        │   │   └── tenant.go
+        │   ├── repositories
+        │   │   ├── base_repository.go
+        │   │   ├── contract_repository.go
+        │   │   ├── owner_repository.go
+        │   │   ├── payment_repository.go
+        │   │   ├── property_repository.go
+        │   │   ├── repository.go
+        │   │   └── tenant_repository.go
+        │   ├── server
+        │   │   ├── handlers
+        │   │   │   ├── contract.go
+        │   │   │   ├── owner.go
+        │   │   │   ├── payment.go
+        │   │   │   ├── property.go
+        │   │   │   └── tenant.go
+        │   │   └── server.go
+        │   ├── services
+        │   └── test
+        │       ├── fixtures
+        │       │   └── fixtures.go
+        │       └── repositories
+        │           ├── contract_repository_test.go
+        │           ├── owner_repository_test.go
+        │           ├── paymenet_repository_test.go
+        │           ├── property_repository_test.go
+        │           ├── repositories_suite_test.go
+        │           └── tenant_repository_test.go
+        ├── logs
+        │   └── app.log
+        └── pkg
+            ├── auth
+            ├── logger
+            │   ├── api.go
+            │   └── logger.go
+            └── utils
+                ├── dtos
+                │   ├── commun.go
+                │   ├── contract_dtos.go
+                │   ├── owner_dtos.go
+                │   ├── payment_dtos.go
+                │   ├── property_dtos.go
+                │   └── tenant_dtos.go
+                ├── mappers
+                │   ├── contract_mapper.go
+                │   ├── owner_mapper.go
+                │   ├── payment_mapper.go
+                │   ├── property_mapper.go
+                │   └── tenant_mapper.go
+                └── validation
+                    └── validator.go
 ```
 
 ## 🤝 Como Contribuir
