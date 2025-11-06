@@ -28,25 +28,22 @@ func Connect(cfg *config.Config) (*DB, error) {
 	}
 
 	// Criar logger do GORM com Zap
-	gormLogger := NewGormLogger(logger.Get().With(zap.String("component", "database")))
+	gormLoggerInstance := NewGormLogger(logger.Get().With(zap.String("component", "database")))
 
 	// Ajustar nível de log baseado na configuração
-	gormLogger.LogLevel = getGormLogLevel(cfg.LogLevel)
+	gormLoggerInstance.LogLevel = getGormLogLevel(cfg.LogLevel)
 	if cfg.Environment == "development" {
-		gormLogger.SlowThreshold = 200 * time.Millisecond
+		gormLoggerInstance.SlowThreshold = 200 * time.Millisecond
 	} else {
-		gormLogger.SlowThreshold = 500 * time.Millisecond
+		gormLoggerInstance.SlowThreshold = 500 * time.Millisecond
 	}
 
 	// Conectar ao banco
 	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{
-		Logger:                                   gormLogger,
+		Logger:                                   gormLoggerInstance,
 		PrepareStmt:                              true,
 		SkipDefaultTransaction:                   true,
 		DisableForeignKeyConstraintWhenMigrating: false,
-		NowFunc: func() time.Time {
-			return time.Now().UTC()
-		},
 	})
 
 	if err != nil {

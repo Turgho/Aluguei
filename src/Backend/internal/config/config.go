@@ -1,8 +1,11 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -19,13 +22,30 @@ type Config struct {
 }
 
 func Load() *Config {
-	return &Config{
-		DatabaseURL: getEnv("DATABASE_URL", "postgresql://aluguei_user:password@localhost:5432/aluguei_db"),
-		Port:        getEnv("PORT", "8080"),
+	fmt.Println("🔍 Iniciando carregamento de configurações...")
+
+	// Tentar carregar .env
+	if err := godotenv.Load(); err != nil {
+		fmt.Printf("❌ Erro ao carregar .env: %v\n", err)
+	} else {
+		fmt.Println("✅ .env carregado com sucesso")
+	}
+
+	// Debug: mostrar variáveis carregadas
+	fmt.Printf("📋 DATABASE_URL: %s\n", os.Getenv("DATABASE_URL"))
+	fmt.Printf("📋 PORT: %s\n", os.Getenv("PORT"))
+	fmt.Printf("📋 ENVIRONMENT: %s\n", os.Getenv("ENVIRONMENT"))
+
+	cfg := &Config{
+		DatabaseURL: getEnv("DATABASE_URL", ""),
+		Port:        getEnv("PORT", ""),
 		Environment: getEnv("ENVIRONMENT", "development"),
 		LogLevel:    getEnv("LOG_LEVEL", "info"),
 		LogFilePath: getEnv("LOG_FILE_PATH", ""),
 	}
+
+	fmt.Printf("🎯 Config carregada - DatabaseURL: %s\n", cfg.DatabaseURL)
+	return cfg
 }
 
 func getEnv(key, defaultValue string) string {
@@ -50,10 +70,18 @@ func (c *Config) DatabaseConfig() struct {
 }
 
 func getEnvAsInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
+	if value := getEnv(key, ""); value != "" {
 		if intValue, err := strconv.Atoi(value); err == nil {
 			return intValue
 		}
 	}
 	return defaultValue
+}
+
+// Validate verifica se as configurações essenciais estão presentes
+func (c *Config) Validate() error {
+	if c.DatabaseURL == "" {
+		return fmt.Errorf("DATABASE_URL não configurada. Verifique o arquivo .env")
+	}
+	return nil
 }
