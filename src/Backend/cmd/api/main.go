@@ -42,7 +42,6 @@ func main() {
 	db, err := database.Connect(cfg)
 	if err != nil {
 		logger.Fatal("Failed to connect to database",
-			zap.String("url", maskDBURL(cfg.DatabaseURL)), // Mascarar senha
 			zap.Error(err),
 		)
 	}
@@ -85,11 +84,4 @@ func main() {
 	} else {
 		logger.Info("Server stopped gracefully")
 	}
-}
-
-// maskDBURL mascara a senha na URL do banco para logs
-func maskDBURL(url string) string {
-	// Implementação simples - em produção use uma lib adequada
-	// Isso é apenas para não expor credenciais nos logs
-	return "postgresql://***:***@***/***"
 }
