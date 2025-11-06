@@ -13,6 +13,7 @@ const (
 	PropertyTypeApartment  PropertyType = "apartment"
 	PropertyTypeHouse      PropertyType = "house"
 	PropertyTypeCommercial PropertyType = "commercial"
+	PropertyTypeOther      PropertyType = "other"
 )
 
 type PropertyStatus string
@@ -25,40 +26,35 @@ const (
 
 type Property struct {
 	ID          uuid.UUID `json:"id" gorm:"type:uuid;primary_key"`
-	OwnerID     uuid.UUID `json:"owner_id" gorm:"type:uuid;not null"`
-	Title       string    `json:"title" gorm:"not null"`
-	Description string    `json:"description"`
+	OwnerID     uuid.UUID `json:"owner_id" gorm:"type:uuid;not null;index"`
+	Title       string    `json:"title" gorm:"type:varchar(255);not null"`
+	Description string    `json:"description" gorm:"type:text"`
 
 	// Endereço
-	Address      string  `json:"address" gorm:"not null"`
-	Number       string  `json:"number" gorm:"not null"`
-	Complement   string  `json:"complement"`
-	Neighborhood string  `json:"neighborhood" gorm:"not null"`
-	City         string  `json:"city" gorm:"not null"`
-	State        string  `json:"state" gorm:"not null;size:2"`
-	ZipCode      string  `json:"zip_code" gorm:"not null;size:9"`
-	Latitude     float64 `json:"latitude"`
-	Longitude    float64 `json:"longitude"`
+	Address      string `json:"address" gorm:"type:varchar(255);not null"`
+	Number       string `json:"number" gorm:"type:varchar(10);not null"`
+	Complement   string `json:"complement" gorm:"type:varchar(100)"`
+	Neighborhood string `json:"neighborhood" gorm:"type:varchar(100);not null"`
+	City         string `json:"city" gorm:"type:varchar(100);not null"`
+	State        string `json:"state" gorm:"type:varchar(2);not null"`
+	ZipCode      string `json:"zip_code" gorm:"type:varchar(9);not null"`
 
 	// Características
 	Type       PropertyType `json:"type" gorm:"type:varchar(20);not null"`
 	Bedrooms   int          `json:"bedrooms" gorm:"not null;default:0"`
 	Bathrooms  int          `json:"bathrooms" gorm:"not null;default:1"`
-	Area       float64      `json:"area" gorm:"not null"` // m²
-	RentAmount float64      `json:"rent_amount" gorm:"not null"`
-	CondoFee   float64      `json:"condo_fee" gorm:"default:0"`
-	IPTU       float64      `json:"iptu" gorm:"default:0"`
+	Area       float64      `json:"area" gorm:"type:decimal(10,2);not null"` // m²
+	RentAmount float64      `json:"rent_amount" gorm:"type:decimal(10,2);not null"`
 
 	// Status
-	Status PropertyStatus `json:"status" gorm:"type:varchar(20);not null;default:available"`
+	Status PropertyStatus `json:"status" gorm:"type:varchar(20);not null;default:available;index"`
 
 	// Timestamps
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `json:"deleted_at,omitempty" gorm:"index"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	// Relacionamentos
-	Owner     *User       `json:"owner,omitempty" gorm:"foreignKey:OwnerID"`
+	Owner     *Owner      `json:"owner,omitempty" gorm:"foreignKey:OwnerID"`
 	Contracts []*Contract `json:"contracts,omitempty" gorm:"foreignKey:PropertyID"`
 }
 

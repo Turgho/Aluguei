@@ -17,29 +17,28 @@ const (
 
 type Contract struct {
 	ID         uuid.UUID `json:"id" gorm:"type:uuid;primary_key"`
-	PropertyID uuid.UUID `json:"property_id" gorm:"type:uuid;not null"`
-	TenantID   uuid.UUID `json:"tenant_id" gorm:"type:uuid;not null"`
+	PropertyID uuid.UUID `json:"property_id" gorm:"type:uuid;not null;index"`
+	TenantID   uuid.UUID `json:"tenant_id" gorm:"type:uuid;not null;index"`
 
 	// Período
-	StartDate time.Time `json:"start_date" gorm:"not null"`
-	EndDate   time.Time `json:"end_date" gorm:"not null"`
+	StartDate time.Time `json:"start_date" gorm:"type:date;not null"`
+	EndDate   time.Time `json:"end_date" gorm:"type:date;not null"`
 
 	// Valores
-	MonthlyRent   float64 `json:"monthly_rent" gorm:"not null"`
-	DepositAmount float64 `json:"deposit_amount" gorm:"not null"`
+	MonthlyRent   float64 `json:"monthly_rent" gorm:"type:decimal(10,2);not null"`
+	DepositAmount float64 `json:"deposit_amount" gorm:"type:decimal(10,2);not null"`
 	PaymentDueDay int     `json:"payment_due_day" gorm:"not null;default:5"`
 
 	// Status
-	Status ContractStatus `json:"status" gorm:"type:varchar(20);not null;default:active"`
+	Status ContractStatus `json:"status" gorm:"type:varchar(20);not null;default:active;index"`
 
 	// Timestamps
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `json:"deleted_at,omitempty" gorm:"index"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	// Relacionamentos
 	Property *Property  `json:"property,omitempty" gorm:"foreignKey:PropertyID"`
-	Tenant   *User      `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
+	Tenant   *Tenant    `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
 	Payments []*Payment `json:"payments,omitempty" gorm:"foreignKey:ContractID"`
 }
 
