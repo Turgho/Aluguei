@@ -1,1 +1,82 @@
+# Binários para aplicações e comandos
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Arquivos binários de teste
+*.test
+
+# Arquivos de output de compilação
+*.out
+
+# Diretório de dependências vendored
+vendor/
+
+# Diretórios de IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Arquivos de ambiente
 .env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Arquivos temporários
+tmp/
+temp/
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage.txt
+coverage.html
+*.coverprofile
+
+# Arquivos específicos do Go
+/go/
+/go.sum
+
+# Diretório de build
+/dist/
+/build/
+
+# Arquivos de configuração local
+config.local.*
+*.local.*
+
+# Diretório de documentação gerada
+/doc/
+
+# Arquivos de cache do Go
+/.cache/
+
+# Binários específicos do projeto (se houver)
+/cmd/api/api
+/cmd/cli/cli
+
+# Migrações de banco (se não quiser versionar)
+/migrations/*.sql
+!/migrations/*.up.sql
+!/migrations/*.down.sql
+
+# Arquivos gerados pelo protocol buffers
+*.pb.go
+
+# Arquivos de configuração do Air (live reload)
+.air.toml
+.air.conf
+
+# Arquivos do Delve (debugger)
+__debug_bin
+
+# Arquivos do gopls (Language Server)
+.gopls/
