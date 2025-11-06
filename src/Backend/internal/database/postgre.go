@@ -121,8 +121,9 @@ func maskDatabaseURL(url string) string {
 // runMigrations executa auto-migration
 func runMigrations(db *gorm.DB) error {
 	models := []interface{}{
-		&models.User{},
+		&models.Owner{},
 		&models.Property{},
+		&models.Tenant{},
 		&models.Contract{},
 		&models.Payment{},
 	}

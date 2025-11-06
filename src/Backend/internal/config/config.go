@@ -31,11 +31,6 @@ func Load() *Config {
 		fmt.Println("✅ .env carregado com sucesso")
 	}
 
-	// Debug: mostrar variáveis carregadas
-	fmt.Printf("📋 DATABASE_URL: %s\n", os.Getenv("DATABASE_URL"))
-	fmt.Printf("📋 PORT: %s\n", os.Getenv("PORT"))
-	fmt.Printf("📋 ENVIRONMENT: %s\n", os.Getenv("ENVIRONMENT"))
-
 	cfg := &Config{
 		DatabaseURL: getEnv("DATABASE_URL", ""),
 		Port:        getEnv("PORT", ""),
@@ -44,7 +39,6 @@ func Load() *Config {
 		LogFilePath: getEnv("LOG_FILE_PATH", ""),
 	}
 
-	fmt.Printf("🎯 Config carregada - DatabaseURL: %s\n", cfg.DatabaseURL)
 	return cfg
 }
 
