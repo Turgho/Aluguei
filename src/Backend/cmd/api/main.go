@@ -38,14 +38,14 @@ func main() {
 		zap.String("environment", cfg.Environment),
 	)
 
-	// Conectar ao banco - CORREÇÃO: passar cfg em vez de cfg.DatabaseURL
+	// Conectar ao banco
 	db, err := database.Connect(cfg)
 	if err != nil {
 		logger.Fatal("Failed to connect to database",
 			zap.Error(err),
 		)
 	}
-	defer db.Close() // Fechar conexão ao final
+	defer db.Close()
 
 	logger.Info("Database connected successfully")
 
