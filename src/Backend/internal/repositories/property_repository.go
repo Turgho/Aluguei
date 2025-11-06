@@ -27,6 +27,25 @@ func NewPropertyRepository(db *gorm.DB) PropertyRepository {
 	}
 }
 
+func (r *propertyRepository) Delete(id string) *errors.AppError {
+	// Verificar se existem contratos ativos primeiro
+	var contractCount int64
+	err := r.db.Model(&models.Contract{}).
+		Where("property_id = ? AND status = ?", id, "active").
+		Count(&contractCount).Error
+
+	if err != nil {
+		return errors.NewDatabaseError("erro ao verificar contratos da propriedade", err)
+	}
+
+	if contractCount > 0 {
+		return errors.NewBusinessRuleError("não é possível deletar propriedade com contratos ativos")
+	}
+
+	// Se não houver contratos ativos, usar o Delete do BaseRepository
+	return r.BaseRepository.Delete(id)
+}
+
 func (r *propertyRepository) FindByOwnerID(ownerID string) ([]models.Property, *errors.AppError) {
 	var properties []models.Property
 	err := r.db.Where("owner_id = ?", ownerID).Preload("Contracts").Find(&properties).Error
@@ -36,25 +55,12 @@ func (r *propertyRepository) FindByOwnerID(ownerID string) ([]models.Property, *
 	return properties, nil
 }
 
-// Sobrescrever FindByID para incluir preloads
 func (r *propertyRepository) FindByID(id string) (*models.Property, *errors.AppError) {
-	var property models.Property
-	err := r.db.Preload("Contracts").First(&property, "id = ?", id).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, errors.NewNotFoundError("propriedade", id)
-		}
-		return nil, errors.NewDatabaseError("erro ao buscar propriedade por ID", err)
-	}
-	return &property, nil
+	// Usar o método com preloads
+	return r.BaseRepository.FindByIDWithPreloads(id, "Contracts")
 }
 
-// Sobrescrever FindAll para incluir preloads
 func (r *propertyRepository) FindAll() ([]models.Property, *errors.AppError) {
-	var properties []models.Property
-	err := r.db.Preload("Contracts").Find(&properties).Error
-	if err != nil {
-		return nil, errors.NewDatabaseError("erro ao buscar todas as propriedades", err)
-	}
-	return properties, nil
+	// Usar o método com preloads
+	return r.BaseRepository.FindAllWithPreloads("Contracts")
 }

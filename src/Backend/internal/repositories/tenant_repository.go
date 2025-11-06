@@ -27,6 +27,25 @@ func NewTenantRepository(db *gorm.DB) TenantRepository {
 	}
 }
 
+func (r *tenantRepository) Delete(id string) *errors.AppError {
+	// Verificar se existem contratos ativos primeiro
+	var contractCount int64
+	err := r.db.Model(&models.Contract{}).
+		Where("tenant_id = ? AND status = ?", id, "active").
+		Count(&contractCount).Error
+
+	if err != nil {
+		return errors.NewDatabaseError("erro ao verificar contratos do inquilino", err)
+	}
+
+	if contractCount > 0 {
+		return errors.NewBusinessRuleError("não é possível deletar inquilino com contratos ativos")
+	}
+
+	// Se não houver contratos ativos, usar o Delete do BaseRepository
+	return r.BaseRepository.Delete(id)
+}
+
 func (r *tenantRepository) FindByOwnerID(ownerID string) ([]models.Tenant, *errors.AppError) {
 	var tenants []models.Tenant
 	err := r.db.Where("owner_id = ?", ownerID).Preload("Contracts").Find(&tenants).Error
@@ -36,25 +55,12 @@ func (r *tenantRepository) FindByOwnerID(ownerID string) ([]models.Tenant, *erro
 	return tenants, nil
 }
 
-// Sobrescrever FindByID para incluir preloads se necessário
 func (r *tenantRepository) FindByID(id string) (*models.Tenant, *errors.AppError) {
-	var tenant models.Tenant
-	err := r.db.Preload("Contracts").First(&tenant, "id = ?", id).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, errors.NewNotFoundError("inquilino", id)
-		}
-		return nil, errors.NewDatabaseError("erro ao buscar inquilino por ID", err)
-	}
-	return &tenant, nil
+	// Usar o método com preloads
+	return r.BaseRepository.FindByIDWithPreloads(id, "Contracts")
 }
 
-// Sobrescrever FindAll para incluir preloads se necessário
 func (r *tenantRepository) FindAll() ([]models.Tenant, *errors.AppError) {
-	var tenants []models.Tenant
-	err := r.db.Preload("Contracts").Find(&tenants).Error
-	if err != nil {
-		return nil, errors.NewDatabaseError("erro ao buscar todos os inquilinos", err)
-	}
-	return tenants, nil
+	// Usar o método com preloads
+	return r.BaseRepository.FindAllWithPreloads("Contracts")
 }

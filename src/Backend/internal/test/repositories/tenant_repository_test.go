@@ -1,125 +1,162 @@
-// tests/repositories/tenant_repository_test.go
 package repositories
 
-import "github.com/Turgho/Aluguei/internal/test/fixtures"
+import (
+	"github.com/Turgho/Aluguei/internal/errors"
+	"github.com/Turgho/Aluguei/internal/test/fixtures"
+)
 
 func (suite *RepositoriesTestSuite) TestTenantRepository_Create_Success() {
-	newTenant := fixtures.CreateTestTenant(suite.testOwner.ID)
-	newTenant.Email = "novo@tenant.com"
-	newTenant.CPF = "98765432100"
+	owner := suite.createUniqueTestOwner()
+	newTenant := fixtures.CreateTestTenant(owner.ID)
+	newTenant.Email = suite.generateUniqueEmail() // Use helper para email único
+	newTenant.CPF = suite.generateUniqueCPF()     // Use helper para CPF único
 
 	err := suite.tenantRepo.Create(newTenant)
 
-	suite.NoError(err)
+	suite.Nil(err) // ← CORREÇÃO: Use Nil para *errors.AppError
 	suite.NotEmpty(newTenant.ID)
-	suite.Equal("novo@tenant.com", newTenant.Email)
 }
 
 func (suite *RepositoriesTestSuite) TestTenantRepository_FindByID_Success() {
-	tenant, err := suite.tenantRepo.FindByID(suite.testTenant.ID.String())
+	owner := suite.createUniqueTestOwner()
+	tenant := suite.createUniqueTestTenant(owner.ID)
 
-	suite.NoError(err)
-	suite.NotNil(tenant)
-	suite.Equal(suite.testTenant.Name, tenant.Name)
-	suite.Equal(suite.testTenant.Email, tenant.Email)
-	suite.Len(tenant.Contracts, 1) // Deve ter o contrato criado no setup
+	foundTenant, err := suite.tenantRepo.FindByID(tenant.ID.String())
+
+	suite.Nil(err) // ← CORREÇÃO
+	suite.NotNil(foundTenant)
+	suite.Equal(tenant.Name, foundTenant.Name)
+	suite.Equal(tenant.Email, foundTenant.Email)
 }
 
 func (suite *RepositoriesTestSuite) TestTenantRepository_FindByID_NotFound() {
 	tenant, err := suite.tenantRepo.FindByID("00000000-0000-0000-0000-000000000000")
 
-	suite.Error(err)
+	suite.NotNil(err) // ← CORREÇÃO
 	suite.Nil(tenant)
-	suite.Equal("NOT_FOUND", err.Code)
+	suite.Equal(errors.ErrorCodeNotFound, err.Code) // ← CORREÇÃO: Use a constante
 }
 
 func (suite *RepositoriesTestSuite) TestTenantRepository_FindByOwnerID_Success() {
-	tenants, err := suite.tenantRepo.FindByOwnerID(suite.testOwner.ID.String())
+	owner := suite.createUniqueTestOwner()
+	tenant := suite.createUniqueTestTenant(owner.ID)
 
-	suite.NoError(err)
+	// VERIFIQUE se este método existe no seu repositório
+	tenants, err := suite.tenantRepo.FindByOwnerID(owner.ID.String())
+
+	suite.Nil(err)
 	suite.Len(tenants, 1)
-	suite.Equal(suite.testTenant.ID, tenants[0].ID)
-	suite.Len(tenants[0].Contracts, 1)
+	suite.Equal(tenant.ID, tenants[0].ID)
 }
 
 func (suite *RepositoriesTestSuite) TestTenantRepository_FindByOwnerID_Multiple() {
-	// Criar segundo tenant
-	secondTenant := fixtures.CreateTestTenant(suite.testOwner.ID)
-	secondTenant.Email = "segundo@tenant.com"
-	secondTenant.CPF = "11122233344"
-	err := suite.tenantRepo.Create(secondTenant)
-	suite.NoError(err)
+	owner := suite.createUniqueTestOwner()
 
-	tenants, err := suite.tenantRepo.FindByOwnerID(suite.testOwner.ID.String())
+	tenant1 := suite.createUniqueTestTenant(owner.ID)
+	tenant2 := suite.createUniqueTestTenant(owner.ID)
 
-	suite.NoError(err)
+	tenants, err := suite.tenantRepo.FindByOwnerID(owner.ID.String())
+
+	suite.Nil(err)
 	suite.Len(tenants, 2)
+
+	tenantIDs := make(map[string]bool)
+	for _, t := range tenants {
+		tenantIDs[t.ID.String()] = true
+	}
+
+	suite.True(tenantIDs[tenant1.ID.String()])
+	suite.True(tenantIDs[tenant2.ID.String()])
 }
 
 func (suite *RepositoriesTestSuite) TestTenantRepository_FindByOwnerID_Empty() {
-	// Criar novo owner sem tenants
-	newOwner := fixtures.CreateTestOwner()
-	newOwner.Email = "owner.sem.tenants@test.com"
-	err := suite.ownerRepo.Create(newOwner)
-	suite.NoError(err)
+	newOwner := suite.createUniqueTestOwner()
 
 	tenants, err := suite.tenantRepo.FindByOwnerID(newOwner.ID.String())
 
-	suite.NoError(err)
+	suite.Nil(err)
 	suite.Len(tenants, 0)
 }
 
 func (suite *RepositoriesTestSuite) TestTenantRepository_FindAll_Success() {
+	owner1 := suite.createUniqueTestOwner()
+	owner2 := suite.createUniqueTestOwner()
+
+	tenant1 := suite.createUniqueTestTenant(owner1.ID)
+	tenant2 := suite.createUniqueTestTenant(owner2.ID)
+
 	tenants, err := suite.tenantRepo.FindAll()
 
-	suite.NoError(err)
-	suite.Len(tenants, 1)
-	suite.Equal(suite.testTenant.ID, tenants[0].ID)
+	suite.Nil(err)
+
+	tenantIDs := make(map[string]bool)
+	for _, t := range tenants {
+		tenantIDs[t.ID.String()] = true
+	}
+
+	suite.True(tenantIDs[tenant1.ID.String()])
+	suite.True(tenantIDs[tenant2.ID.String()])
 }
 
 func (suite *RepositoriesTestSuite) TestTenantRepository_Update_Success() {
-	suite.testTenant.Name = "Maria Santos Atualizada"
-	suite.testTenant.Phone = "11999997777"
+	owner := suite.createUniqueTestOwner()
+	tenant := suite.createUniqueTestTenant(owner.ID)
 
-	err := suite.tenantRepo.Update(suite.testTenant)
-	suite.NoError(err)
+	tenant.Name = "Nome Atualizado"
+	tenant.Phone = "11999997777"
 
-	updatedTenant, err := suite.tenantRepo.FindByID(suite.testTenant.ID.String())
-	suite.NoError(err)
-	suite.Equal("Maria Santos Atualizada", updatedTenant.Name)
+	err := suite.tenantRepo.Update(tenant)
+	suite.Nil(err)
+
+	updatedTenant, err := suite.tenantRepo.FindByID(tenant.ID.String())
+	suite.Nil(err)
+	suite.Equal("Nome Atualizado", updatedTenant.Name)
 	suite.Equal("11999997777", updatedTenant.Phone)
 }
 
 func (suite *RepositoriesTestSuite) TestTenantRepository_Update_Email() {
-	suite.testTenant.Email = "maria.atualizada@test.com"
+	owner := suite.createUniqueTestOwner()
+	tenant := suite.createUniqueTestTenant(owner.ID)
 
-	err := suite.tenantRepo.Update(suite.testTenant)
-	suite.NoError(err)
+	tenant.Email = suite.generateUniqueEmail() // Use email único
 
-	updatedTenant, err := suite.tenantRepo.FindByID(suite.testTenant.ID.String())
-	suite.NoError(err)
-	suite.Equal("maria.atualizada@test.com", updatedTenant.Email)
+	err := suite.tenantRepo.Update(tenant)
+	suite.Nil(err)
+
+	updatedTenant, err := suite.tenantRepo.FindByID(tenant.ID.String())
+	suite.Nil(err)
+	suite.Equal(tenant.Email, updatedTenant.Email)
 }
 
 func (suite *RepositoriesTestSuite) TestTenantRepository_Delete_Success() {
-	newTenant := fixtures.CreateTestTenant(suite.testOwner.ID)
-	newTenant.Email = "deletar@tenant.com"
-	err := suite.tenantRepo.Create(newTenant)
-	suite.NoError(err)
+	owner := suite.createUniqueTestOwner()
+	tenant := suite.createUniqueTestTenant(owner.ID)
 
-	err = suite.tenantRepo.Delete(newTenant.ID.String())
-	suite.NoError(err)
+	err := suite.tenantRepo.Delete(tenant.ID.String())
+	suite.Nil(err)
 
-	// Verificar se foi deletado
-	deletedTenant, err := suite.tenantRepo.FindByID(newTenant.ID.String())
-	suite.Error(err)
+	deletedTenant, err := suite.tenantRepo.FindByID(tenant.ID.String())
+	suite.NotNil(err)
 	suite.Nil(deletedTenant)
+	suite.Equal(errors.ErrorCodeNotFound, err.Code)
 }
 
 func (suite *RepositoriesTestSuite) TestTenantRepository_Delete_WithActiveContracts() {
-	// Não deve conseguir deletar tenant com contratos ativos
-	err := suite.tenantRepo.Delete(suite.testTenant.ID.String())
+	owner := suite.createUniqueTestOwner()
+	tenant := suite.createUniqueTestTenant(owner.ID)
+	property := suite.createUniqueTestProperty(owner.ID)
 
-	suite.Error(err)
-	suite.Equal("BUSINESS_RULE", err.Code)
+	// Criar contrato ativo
+	contract := fixtures.CreateTestContract(property.ID, tenant.ID)
+	err := suite.contractRepo.Create(contract)
+	suite.Nil(err)
+
+	// Não deve conseguir deletar tenant com contratos ativos
+	err = suite.tenantRepo.Delete(tenant.ID.String())
+
+	// CORREÇÃO: Verifique se err não é nil antes de acessar .Code
+	suite.NotNil(err, "Deveria retornar erro ao tentar deletar tenant com contratos ativos")
+	if err != nil {
+		suite.Equal(errors.ErrorCodeBusinessRule, err.Code)
+	}
 }

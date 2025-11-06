@@ -18,7 +18,13 @@ func NewBaseRepository[T any](db *gorm.DB) *BaseRepository[T] {
 func (r *BaseRepository[T]) Create(entity *T) *errors.AppError {
 	err := r.db.Create(entity).Error
 	if err != nil {
-		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "Duplicate entry") {
+		// Para PostgreSQL
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			// Extrai o nome da constraint se possível
+			return errors.NewAlreadyExistsError("registro", "chave única", "")
+		}
+		// Para SQLite (testes)
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return errors.NewAlreadyExistsError("registro", "chave única", "")
 		}
 		return errors.NewDatabaseError("erro ao criar registro", err)
@@ -79,7 +85,12 @@ func (r *BaseRepository[T]) FindAllWithPreloads(preloads ...string) ([]T, *error
 func (r *BaseRepository[T]) Update(entity *T) *errors.AppError {
 	err := r.db.Save(entity).Error
 	if err != nil {
-		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "Duplicate entry") {
+		// Para PostgreSQL
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			return errors.NewAlreadyExistsError("registro", "chave única", "")
+		}
+		// Para SQLite (testes)
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return errors.NewAlreadyExistsError("registro", "chave única", "")
 		}
 		return errors.NewDatabaseError("erro ao atualizar registro", err)

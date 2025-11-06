@@ -2,56 +2,61 @@
 package repositories
 
 import (
+	"github.com/Turgho/Aluguei/internal/errors"
 	"github.com/Turgho/Aluguei/internal/models"
 	"github.com/Turgho/Aluguei/internal/test/fixtures"
 )
 
 func (suite *RepositoriesTestSuite) TestContractRepository_Create_Success() {
-	// Criar novo tenant e property para evitar conflito
-	newTenant := fixtures.CreateTestTenant(suite.testOwner.ID)
-	newTenant.Email = "novotenant@test.com"
-	err := suite.tenantRepo.Create(newTenant)
-	suite.NoError(err)
+	// Criar dados únicos para este teste
+	owner := suite.createUniqueTestOwner()
+	property := suite.createUniqueTestProperty(owner.ID)
+	tenant := suite.createUniqueTestTenant(owner.ID)
 
-	newProperty := fixtures.CreateTestProperty(suite.testOwner.ID)
-	newProperty.Title = "Nova Prop para Contrato"
-	err = suite.propertyRepo.Create(newProperty)
-	suite.NoError(err)
+	newContract := fixtures.CreateTestContract(property.ID, tenant.ID)
 
-	newContract := fixtures.CreateTestContract(newProperty.ID, newTenant.ID)
+	err := suite.contractRepo.Create(newContract)
 
-	err = suite.contractRepo.Create(newContract)
-
-	suite.NoError(err)
+	suite.Nil(err) // ← CORREÇÃO
 	suite.NotEmpty(newContract.ID)
 	suite.Equal(models.ContractStatusActive, newContract.Status)
 }
 
 func (suite *RepositoriesTestSuite) TestContractRepository_FindByID_Success() {
-	contract, err := suite.contractRepo.FindByID(suite.testContract.ID.String())
+	owner := suite.createUniqueTestOwner()
+	property := suite.createUniqueTestProperty(owner.ID)
+	tenant := suite.createUniqueTestTenant(owner.ID)
+	contract := suite.createTestContract(property.ID, tenant.ID)
 
-	suite.NoError(err)
-	suite.NotNil(contract)
-	suite.Equal(suite.testContract.MonthlyRent, contract.MonthlyRent)
-	suite.NotNil(contract.Property)
-	suite.NotNil(contract.Tenant)
-	suite.NotNil(contract.Payments)
+	foundContract, err := suite.contractRepo.FindByID(contract.ID.String())
+
+	suite.Nil(err) // ← CORREÇÃO
+	suite.NotNil(foundContract)
+	suite.Equal(contract.MonthlyRent, foundContract.MonthlyRent)
+	suite.NotNil(foundContract.Property)
+	suite.NotNil(foundContract.Tenant)
+	suite.NotNil(foundContract.Payments)
 }
 
 func (suite *RepositoriesTestSuite) TestContractRepository_FindByID_NotFound() {
 	contract, err := suite.contractRepo.FindByID("00000000-0000-0000-0000-000000000000")
 
-	suite.Error(err)
+	suite.NotNil(err) // ← CORREÇÃO
 	suite.Nil(contract)
-	suite.Equal("NOT_FOUND", err.Code)
+	suite.Equal(errors.ErrorCodeNotFound, err.Code) // ← CORREÇÃO
 }
 
 func (suite *RepositoriesTestSuite) TestContractRepository_FindByPropertyID_Success() {
-	contracts, err := suite.contractRepo.FindByPropertyID(suite.testProperty.ID.String())
+	owner := suite.createUniqueTestOwner()
+	property := suite.createUniqueTestProperty(owner.ID)
+	tenant := suite.createUniqueTestTenant(owner.ID)
+	contract := suite.createTestContract(property.ID, tenant.ID)
 
-	suite.NoError(err)
+	contracts, err := suite.contractRepo.FindByPropertyID(property.ID.String())
+
+	suite.Nil(err) // ← CORREÇÃO
 	suite.Len(contracts, 1)
-	suite.Equal(suite.testContract.ID, contracts[0].ID)
+	suite.Equal(contract.ID, contracts[0].ID)
 	suite.NotNil(contracts[0].Property)
 	suite.NotNil(contracts[0].Tenant)
 	suite.NotNil(contracts[0].Payments)
@@ -59,106 +64,134 @@ func (suite *RepositoriesTestSuite) TestContractRepository_FindByPropertyID_Succ
 
 func (suite *RepositoriesTestSuite) TestContractRepository_FindByPropertyID_Empty() {
 	// Criar property sem contratos
-	newProperty := fixtures.CreateTestProperty(suite.testOwner.ID)
-	newProperty.Title = "Property Sem Contratos"
-	err := suite.propertyRepo.Create(newProperty)
-	suite.NoError(err)
+	owner := suite.createUniqueTestOwner()
+	property := suite.createUniqueTestProperty(owner.ID)
 
-	contracts, err := suite.contractRepo.FindByPropertyID(newProperty.ID.String())
+	contracts, err := suite.contractRepo.FindByPropertyID(property.ID.String())
 
-	suite.NoError(err)
+	suite.Nil(err) // ← CORREÇÃO
 	suite.Len(contracts, 0)
 }
 
 func (suite *RepositoriesTestSuite) TestContractRepository_FindByTenantID_Success() {
-	contracts, err := suite.contractRepo.FindByTenantID(suite.testTenant.ID.String())
+	owner := suite.createUniqueTestOwner()
+	property := suite.createUniqueTestProperty(owner.ID)
+	tenant := suite.createUniqueTestTenant(owner.ID)
+	contract := suite.createTestContract(property.ID, tenant.ID)
 
-	suite.NoError(err)
+	contracts, err := suite.contractRepo.FindByTenantID(tenant.ID.String())
+
+	suite.Nil(err) // ← CORREÇÃO
 	suite.Len(contracts, 1)
-	suite.Equal(suite.testContract.ID, contracts[0].ID)
+	suite.Equal(contract.ID, contracts[0].ID)
 	suite.NotNil(contracts[0].Property)
 	suite.NotNil(contracts[0].Payments)
 }
 
 func (suite *RepositoriesTestSuite) TestContractRepository_FindActiveByPropertyID_Success() {
-	contract, err := suite.contractRepo.FindActiveByPropertyID(suite.testProperty.ID.String())
+	owner := suite.createUniqueTestOwner()
+	property := suite.createUniqueTestProperty(owner.ID)
+	tenant := suite.createUniqueTestTenant(owner.ID)
+	contract := suite.createTestContract(property.ID, tenant.ID)
 
-	suite.NoError(err)
-	suite.NotNil(contract)
-	suite.Equal(suite.testContract.ID, contract.ID)
-	suite.Equal(models.ContractStatusActive, contract.Status)
-	suite.NotNil(contract.Property)
-	suite.NotNil(contract.Tenant)
-	suite.NotNil(contract.Payments)
+	foundContract, err := suite.contractRepo.FindActiveByPropertyID(property.ID.String())
+
+	suite.Nil(err) // ← CORREÇÃO
+	suite.NotNil(foundContract)
+	suite.Equal(contract.ID, foundContract.ID)
+	suite.Equal(models.ContractStatusActive, foundContract.Status)
+	suite.NotNil(foundContract.Property)
+	suite.NotNil(foundContract.Tenant)
+	suite.NotNil(foundContract.Payments)
 }
 
 func (suite *RepositoriesTestSuite) TestContractRepository_FindActiveByPropertyID_NotFound() {
 	// Criar property sem contrato ativo
-	newProperty := fixtures.CreateTestProperty(suite.testOwner.ID)
-	newProperty.Title = "Property Sem Contrato Ativo"
-	err := suite.propertyRepo.Create(newProperty)
-	suite.NoError(err)
+	owner := suite.createUniqueTestOwner()
+	property := suite.createUniqueTestProperty(owner.ID)
 
-	contract, err := suite.contractRepo.FindActiveByPropertyID(newProperty.ID.String())
+	contract, err := suite.contractRepo.FindActiveByPropertyID(property.ID.String())
 
-	suite.Error(err)
+	suite.NotNil(err) // ← CORREÇÃO
 	suite.Nil(contract)
-	suite.Equal("NOT_FOUND", err.Code)
+	suite.Equal(errors.ErrorCodeNotFound, err.Code) // ← CORREÇÃO
 }
 
 func (suite *RepositoriesTestSuite) TestContractRepository_FindAll_Success() {
+	// Criar múltiplos contratos
+	owner1 := suite.createUniqueTestOwner()
+	owner2 := suite.createUniqueTestOwner()
+
+	property1 := suite.createUniqueTestProperty(owner1.ID)
+	property2 := suite.createUniqueTestProperty(owner2.ID)
+
+	tenant1 := suite.createUniqueTestTenant(owner1.ID)
+	tenant2 := suite.createUniqueTestTenant(owner2.ID)
+
+	contract1 := suite.createTestContract(property1.ID, tenant1.ID)
+	contract2 := suite.createTestContract(property2.ID, tenant2.ID)
+
 	contracts, err := suite.contractRepo.FindAll()
 
-	suite.NoError(err)
-	suite.Len(contracts, 1)
-	suite.Equal(suite.testContract.ID, contracts[0].ID)
+	suite.Nil(err) // ← CORREÇÃO
+
+	// Verificar se os contratos criados estão na lista
+	contractIDs := make(map[string]bool)
+	for _, c := range contracts {
+		contractIDs[c.ID.String()] = true
+	}
+
+	suite.True(contractIDs[contract1.ID.String()])
+	suite.True(contractIDs[contract2.ID.String()])
 }
 
 func (suite *RepositoriesTestSuite) TestContractRepository_Update_Success() {
-	suite.testContract.MonthlyRent = 1600.00
-	suite.testContract.PaymentDueDay = 10
+	owner := suite.createUniqueTestOwner()
+	property := suite.createUniqueTestProperty(owner.ID)
+	tenant := suite.createUniqueTestTenant(owner.ID)
+	contract := suite.createTestContract(property.ID, tenant.ID)
 
-	err := suite.contractRepo.Update(suite.testContract)
-	suite.NoError(err)
+	contract.MonthlyRent = 1600.00
+	contract.PaymentDueDay = 10
 
-	updatedContract, err := suite.contractRepo.FindByID(suite.testContract.ID.String())
-	suite.NoError(err)
+	err := suite.contractRepo.Update(contract)
+	suite.Nil(err) // ← CORREÇÃO
+
+	updatedContract, err := suite.contractRepo.FindByID(contract.ID.String())
+	suite.Nil(err) // ← CORREÇÃO
 	suite.Equal(1600.00, updatedContract.MonthlyRent)
 	suite.Equal(10, updatedContract.PaymentDueDay)
 }
 
 func (suite *RepositoriesTestSuite) TestContractRepository_Update_Status() {
-	suite.testContract.Status = models.ContractStatusExpired
+	owner := suite.createUniqueTestOwner()
+	property := suite.createUniqueTestProperty(owner.ID)
+	tenant := suite.createUniqueTestTenant(owner.ID)
+	contract := suite.createTestContract(property.ID, tenant.ID)
 
-	err := suite.contractRepo.Update(suite.testContract)
-	suite.NoError(err)
+	contract.Status = models.ContractStatusExpired
 
-	updatedContract, err := suite.contractRepo.FindByID(suite.testContract.ID.String())
-	suite.NoError(err)
+	err := suite.contractRepo.Update(contract)
+	suite.Nil(err) // ← CORREÇÃO
+
+	updatedContract, err := suite.contractRepo.FindByID(contract.ID.String())
+	suite.Nil(err) // ← CORREÇÃO
 	suite.Equal(models.ContractStatusExpired, updatedContract.Status)
 }
 
 func (suite *RepositoriesTestSuite) TestContractRepository_Delete_Success() {
 	// Criar contrato específico para deletar
-	newTenant := fixtures.CreateTestTenant(suite.testOwner.ID)
-	newTenant.Email = "deletar@test.com"
-	err := suite.tenantRepo.Create(newTenant)
-	suite.NoError(err)
+	owner := suite.createUniqueTestOwner()
+	property := suite.createUniqueTestProperty(owner.ID)
+	tenant := suite.createUniqueTestTenant(owner.ID)
+	contract := suite.createTestContract(property.ID, tenant.ID)
 
-	newProperty := fixtures.CreateTestProperty(suite.testOwner.ID)
-	newProperty.Title = "Property Para Deletar Contrato"
-	err = suite.propertyRepo.Create(newProperty)
-	suite.NoError(err)
-
-	newContract := fixtures.CreateTestContract(newProperty.ID, newTenant.ID)
-	err = suite.contractRepo.Create(newContract)
-	suite.NoError(err)
-
-	err = suite.contractRepo.Delete(newContract.ID.String())
-	suite.NoError(err)
+	err := suite.contractRepo.Delete(contract.ID.String())
+	suite.Nil(err) // ← CORREÇÃO
 
 	// Verificar se foi deletado
-	deletedContract, err := suite.contractRepo.FindByID(newContract.ID.String())
-	suite.Error(err)
+	deletedContract, err := suite.contractRepo.FindByID(contract.ID.String())
+	suite.NotNil(err) // ← CORREÇÃO
 	suite.Nil(deletedContract)
+	suite.Equal(errors.ErrorCodeNotFound, err.Code) // ← CORREÇÃO
 }

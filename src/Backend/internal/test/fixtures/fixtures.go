@@ -1,3 +1,4 @@
+// tests/fixtures/fixtures.go
 package fixtures
 
 import (
@@ -11,6 +12,7 @@ import (
 
 // SetupTestDB cria e configura o banco de testes
 func SetupTestDB() (*gorm.DB, error) {
+	// Usar banco único para cada instância
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	if err != nil {
 		return nil, err
@@ -35,9 +37,10 @@ func SetupTestDB() (*gorm.DB, error) {
 func CreateTestOwner() *models.Owner {
 	return &models.Owner{
 		Name:     "João Silva",
-		Email:    "joao@test.com",
+		Email:    "joao@test.com", // Será sobrescrito pelos testes
 		Phone:    "11999999999",
 		Password: "senha123",
+		CPF:      "12345678901", // CPF padrão
 	}
 }
 
@@ -45,7 +48,7 @@ func CreateTestOwner() *models.Owner {
 func CreateTestProperty(ownerID uuid.UUID) *models.Property {
 	return &models.Property{
 		OwnerID:      ownerID,
-		Title:        "Apartamento Teste",
+		Title:        "Apartamento Teste", // Será sobrescrito pelos testes
 		Description:  "Descrição do apartamento teste",
 		Address:      "Rua Teste, 123",
 		Number:       "123",
@@ -68,9 +71,9 @@ func CreateTestTenant(ownerID uuid.UUID) *models.Tenant {
 	return &models.Tenant{
 		OwnerID: ownerID,
 		Name:    "Maria Santos",
-		Email:   "maria@test.com",
+		Email:   "maria@test.com", // Será sobrescrito pelos testes
 		Phone:   "11888888888",
-		CPF:     "12345678901",
+		CPF:     "98765432100", // CPF padrão
 	}
 }
 
