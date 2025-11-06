@@ -1,16 +1,17 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
-	"my-api/internal/config"
-	"my-api/internal/database"
-	"my-api/internal/server"
-	"my-api/pkg/logger"
-
+	"github.com/Turgho/Aluguei/internal/config"
+	"github.com/Turgho/Aluguei/internal/database"
+	"github.com/Turgho/Aluguei/internal/server"
+	"github.com/Turgho/Aluguei/pkg/logger"
 	"go.uber.org/zap"
 )
 
@@ -37,34 +38,58 @@ func main() {
 		zap.String("environment", cfg.Environment),
 	)
 
-	// Conectar ao banco
-	db, err := database.Connect(cfg.DatabaseURL)
+	// Conectar ao banco - CORREÇÃO: passar cfg em vez de cfg.DatabaseURL
+	db, err := database.Connect(cfg)
 	if err != nil {
 		logger.Fatal("Failed to connect to database",
-			zap.String("url", cfg.DatabaseURL),
+			zap.String("url", maskDBURL(cfg.DatabaseURL)), // Mascarar senha
 			zap.Error(err),
 		)
 	}
+	defer db.Close() // Fechar conexão ao final
+
 	logger.Info("Database connected successfully")
 
-	// Inicializar servidor
-	srv := server.New(cfg, db)
+	// Health check do banco
+	if err := db.HealthCheck(); err != nil {
+		logger.Fatal("Database health check failed", zap.Error(err))
+	}
+	logger.Info("Database health check passed")
 
-	// Graceful shutdown
+	// Inicializar servidor
+	srv := server.New(cfg, db.DB)
+
+	// Context para graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// Iniciar servidor em goroutine
 	go func() {
+		logger.Info("Starting HTTP server", zap.String("port", cfg.Port))
 		if err := srv.Start(); err != nil {
 			logger.Fatal("Failed to start server", zap.Error(err))
 		}
 	}()
 
 	// Aguardar sinal de shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	<-ctx.Done()
+	logger.Info("Shutdown signal received")
 
-	logger.Info("Shutting down server...")
-	if err := srv.Shutdown(); err != nil {
+	// Shutdown graceful com timeout
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	logger.Info("Shutting down server gracefully...")
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Error("Error during server shutdown", zap.Error(err))
+	} else {
+		logger.Info("Server stopped gracefully")
 	}
-	logger.Info("Server stopped")
+}
+
+// maskDBURL mascara a senha na URL do banco para logs
+func maskDBURL(url string) string {
+	// Implementação simples - em produção use uma lib adequada
+	// Isso é apenas para não expor credenciais nos logs
+	return "postgresql://***:***@***/***"
 }
