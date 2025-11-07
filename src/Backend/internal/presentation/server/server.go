@@ -30,8 +30,8 @@ func New(db *gorm.DB) *Server {
 	ownerUseCase := usecases.NewOwnerUseCase(ownerRepo)
 	tenantUseCase := usecases.NewTenantUseCase(tenantRepo)
 	propertyUseCase := usecases.NewPropertyUseCase(propertyRepo)
-	_ = usecases.NewContractUseCase(contractRepo)
-	_ = usecases.NewPaymentUseCase(paymentRepo)
+	contractUseCase := usecases.NewContractUseCase(contractRepo)
+	paymentUseCase := usecases.NewPaymentUseCase(paymentRepo)
 
 	// Initialize handlers
 	jwtSecret := os.Getenv("JWT_SECRET")
@@ -42,6 +42,8 @@ func New(db *gorm.DB) *Server {
 	ownerHandler := handlers.NewOwnerHandler(ownerUseCase)
 	tenantHandler := handlers.NewTenantHandler(tenantUseCase)
 	propertyHandler := handlers.NewPropertyHandler(propertyUseCase)
+	contractHandler := handlers.NewContractHandler(contractUseCase)
+	paymentHandler := handlers.NewPaymentHandler(paymentUseCase)
 	healthHandler := handlers.NewHealthHandler(db)
 	swaggerHandler := handlers.NewSwaggerHandler()
 
@@ -109,6 +111,32 @@ func New(db *gorm.DB) *Server {
 			properties.PUT("/:id", propertyHandler.UpdateProperty)
 			properties.DELETE("/:id", propertyHandler.DeleteProperty)
 			properties.GET("/owner/:ownerId", propertyHandler.GetPropertiesByOwner)
+		}
+
+		// Contract routes
+		contracts := api.Group("/contracts")
+		{
+			contracts.POST("", contractHandler.CreateContract)
+			contracts.GET("", contractHandler.GetContracts)
+			contracts.GET("/:id", contractHandler.GetContractByID)
+			contracts.PUT("/:id", contractHandler.UpdateContract)
+			contracts.DELETE("/:id", contractHandler.DeleteContract)
+			contracts.GET("/property/:propertyId", contractHandler.GetContractsByProperty)
+			contracts.GET("/tenant/:tenantId", contractHandler.GetContractsByTenant)
+			contracts.GET("/property/:propertyId/active", contractHandler.GetActiveContractByProperty)
+		}
+
+		// Payment routes
+		payments := api.Group("/payments")
+		{
+			payments.POST("", paymentHandler.CreatePayment)
+			payments.GET("", paymentHandler.GetPayments)
+			payments.GET("/:id", paymentHandler.GetPaymentByID)
+			payments.PUT("/:id", paymentHandler.UpdatePayment)
+			payments.DELETE("/:id", paymentHandler.DeletePayment)
+			payments.GET("/contract/:contractId", paymentHandler.GetPaymentsByContract)
+			payments.GET("/overdue", paymentHandler.GetOverduePayments)
+			payments.GET("/period", paymentHandler.GetPaymentsByPeriod)
 		}
 	}
 
