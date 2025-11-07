@@ -11,7 +11,7 @@ info:
     url: https://opensource.org/licenses/MIT
 
 servers:
-  - url: http://localhost:8081/api/v1
+  - url: http://localhost:8080/api/v1
     description: Servidor de desenvolvimento
   - url: https://api.aluguei.com/v1
     description: Servidor de produção

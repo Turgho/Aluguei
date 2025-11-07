@@ -8,80 +8,69 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Turgho/Aluguei/internal/config"
-	"github.com/Turgho/Aluguei/internal/database"
-	"github.com/Turgho/Aluguei/internal/server"
-	"github.com/Turgho/Aluguei/pkg/logger"
-	"go.uber.org/zap"
+	"github.com/Turgho/Aluguei/internal/infrastructure/database"
+	"github.com/Turgho/Aluguei/internal/presentation/server"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Carregar configurações
-	cfg := config.Load()
-
-	// Inicializar logger
-	if err := logger.Init(logger.Config{
-		Environment: cfg.Environment,
-		Level:       cfg.LogLevel,
-		FilePath:    cfg.LogFilePath,
-		MaxSize:     100, // MB
-		MaxBackups:  3,
-		MaxAge:      30, // dias
-	}); err != nil {
-		log.Fatal("Failed to initialize logger:", err)
+	// Load environment variables
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found")
 	}
-	defer logger.Get().Sync()
 
-	logger.Info("Starting application",
-		zap.String("name", "Aluguei API"),
-		zap.String("version", "1.0.0"),
-		zap.String("environment", cfg.Environment),
-	)
+	// Database configuration
+	dbConfig := database.Config{
+		Host:     getEnv("DB_HOST", ""),
+		Port:     getEnv("DB_PORT", ""),
+		User:     getEnv("DB_USER", ""),
+		Password: getEnv("DB_PASSWORD", ""),
+		DBName:   getEnv("DB_NAME", ""),
+		SSLMode:  getEnv("DB_SSLMODE", "disable"),
+	}
 
-	// Conectar ao banco
-	db, err := database.Connect(cfg)
+	// Connect to database
+	db, err := database.Connect(dbConfig)
 	if err != nil {
-		logger.Fatal("Failed to connect to database",
-			zap.Error(err),
-		)
+		log.Fatal("Failed to connect to database:", err)
 	}
-	defer db.Close()
 
-	logger.Info("Database connected successfully")
+	log.Println("Database connected successfully")
 
-	// Health check do banco
-	if err := db.HealthCheck(); err != nil {
-		logger.Fatal("Database health check failed", zap.Error(err))
-	}
-	logger.Info("Database health check passed")
+	// Initialize server
+	srv := server.New(db)
 
-	// Inicializar servidor
-	srv := server.New(cfg, db.DB)
-
-	// Context para graceful shutdown
+	// Context for graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// Iniciar servidor em goroutine
+	// Start server in goroutine
 	go func() {
-		logger.Info("Starting HTTP server", zap.String("port", cfg.Port))
+		log.Println("Starting HTTP server on :8080")
 		if err := srv.Start(); err != nil {
-			logger.Fatal("Failed to start server", zap.Error(err))
+			log.Fatal("Failed to start server:", err)
 		}
 	}()
 
-	// Aguardar sinal de shutdown
+	// Wait for shutdown signal
 	<-ctx.Done()
-	logger.Info("Shutdown signal received")
+	log.Println("Shutdown signal received")
 
-	// Shutdown graceful com timeout
+	// Graceful shutdown with timeout
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	logger.Info("Shutting down server gracefully...")
+	log.Println("Shutting down server gracefully...")
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		logger.Error("Error during server shutdown", zap.Error(err))
+		log.Printf("Error during server shutdown: %v", err)
 	} else {
-		logger.Info("Server stopped gracefully")
+		log.Println("Server stopped gracefully")
 	}
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
