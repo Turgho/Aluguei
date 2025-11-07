@@ -42,143 +42,79 @@ A documentação completa foi organizada em arquivos Markdown dentro de docs/:
 - `docs/09_MetricasDeAceitação.md` — Estimativa para sucesso do projeto
 - `docs/10_Segurança.md` — Métodos para segurança do usuário
 
-## 🚀 Começando
-- Pré-requisitos
-  - Go 1.21+
-  - Node.js 18+
-  - PostgreSQL 14+
-  - Docker (opcional)
+## 🚀 Desenvolvimento MVP1
 
-### Instalação Local
+### Pré-requisitos
+- Go 1.25+
+- PostgreSQL 18+
+- Docker & Docker Compose
+- Make (opcional)
+
+### Setup Rápido
 ```bash
-
 # Clone o repositório
-git clone https://github.com/seu-usuario/aluguei.git
-cd aluguei
+git clone https://github.com/Turgho/aluguei.git
+cd aluguei/src/Backend
 
-# Configure as variáveis de ambiente
+# Configure variáveis de ambiente
 cp .env.example .env
-# Edite .env com suas configurações
+# Edite .env com suas configurações de banco
 
-# Instale dependências do backend
-cd backend
+# Inicie os serviços
+docker-compose up -d
+
+# Instale dependências
 go mod download
 
-# Instale dependências do frontend
-cd ../frontend
-npm install
+# Execute migrations e seeds
+make seed
 
-# Execute a aplicação
-docker-compose up -d
-# ou
-make dev
+# Inicie a aplicação
+go run cmd/api/main.go
 ```
 
 ### Acesso
 ```text
-    Frontend: http://localhost:3000
-    API Backend: http://localhost:8080
-    Adminer (DB): http://localhost:8081
+API Backend: http://localhost:8080
+Swagger UI: http://localhost:8080/swagger/
+Adminer (DB): http://localhost:8081
+Health Check: http://localhost:8080/health
 ```
 
-## 📊 Estrutura do Projeto
+### Contas de Teste
 ```text
+Proprietário: joao@email.com / senha123
+Inquilino: maria@email.com / senha123
+```
 
-aluguei/
-├── LICENSE
-├── README.md
-├── scripts
-└── src
-    └── Backend
-        ├── cmd
-        │   └── api
-        │       └── main.go
-        ├── deployments
-        │   ├── docker-compose.yml
-        │   └── migrations
-        ├── docs
-        │   ├── 01_Objetivo.md
-        │   ├── 02_MVPs.md
-        │   ├── 03_Entidades.md
-        │   ├── 04_UserStories.md
-        │   ├── 05_BancoDeDados.md
-        │   ├── 06_Arquitetura.md
-        │   ├── 07_Fluxos.md
-        │   ├── 08_Stack.md
-        │   ├── 09_MétricasDeAceitação.md
-        │   ├── 10_Segurança.md
-        │   └── swagger.yaml
-        ├── go.mod
-        ├── go.sum
-        ├── internal
-        │   ├── config
-        │   │   └── config.go
-        │   ├── database
-        │   │   ├── gorm_logger.go
-        │   │   └── postgre.go
-        │   ├── errors
-        │   │   └── app_errors.go
-        │   ├── handlers
-        │   ├── middlewares
-        │   │   ├── auth.go
-        │   │   ├── cors.go
-        │   │   └── logging.go
-        │   ├── models
-        │   │   ├── contract.go
-        │   │   ├── owner.go
-        │   │   ├── payment.go
-        │   │   ├── property.go
-        │   │   └── tenant.go
-        │   ├── repositories
-        │   │   ├── base_repository.go
-        │   │   ├── contract_repository.go
-        │   │   ├── owner_repository.go
-        │   │   ├── payment_repository.go
-        │   │   ├── property_repository.go
-        │   │   ├── repository.go
-        │   │   └── tenant_repository.go
-        │   ├── server
-        │   │   ├── handlers
-        │   │   │   ├── contract.go
-        │   │   │   ├── owner.go
-        │   │   │   ├── payment.go
-        │   │   │   ├── property.go
-        │   │   │   └── tenant.go
-        │   │   └── server.go
-        │   ├── services
-        │   └── test
-        │       ├── fixtures
-        │       │   └── fixtures.go
-        │       └── repositories
-        │           ├── contract_repository_test.go
-        │           ├── owner_repository_test.go
-        │           ├── paymenet_repository_test.go
-        │           ├── property_repository_test.go
-        │           ├── repositories_suite_test.go
-        │           └── tenant_repository_test.go
-        ├── logs
-        │   └── app.log
-        └── pkg
-            ├── auth
-            ├── logger
-            │   ├── api.go
-            │   └── logger.go
-            └── utils
-                ├── dtos
-                │   ├── commun.go
-                │   ├── contract_dtos.go
-                │   ├── owner_dtos.go
-                │   ├── payment_dtos.go
-                │   ├── property_dtos.go
-                │   └── tenant_dtos.go
-                ├── mappers
-                │   ├── contract_mapper.go
-                │   ├── owner_mapper.go
-                │   ├── payment_mapper.go
-                │   ├── property_mapper.go
-                │   └── tenant_mapper.go
-                └── validation
-                    └── validator.go
+## 📊 Estrutura MVP1 (Clean Architecture)
+```text
+src/Backend/
+├── cmd/
+│   ├── api/main.go              # Aplicação principal
+│   └── seed/main.go             # Seeder de dados
+├── internal/
+│   ├── domain/                  # Camada de domínio
+│   │   ├── entities/            # Entidades de negócio
+│   │   └── repositories/        # Interfaces de repositório
+│   ├── application/             # Casos de uso
+│   │   └── usecases/            # Lógica de aplicação
+│   ├── infrastructure/          # Implementações
+│   │   ├── database/            # Conexão com banco
+│   │   ├── persistence/         # Repositórios GORM
+│   │   └── seeds/               # Sistema de seeds
+│   └── presentation/            # Camada de apresentação
+│       ├── handlers/            # HTTP handlers
+│       └── server/              # Configuração do servidor
+├── test/                        # Testes abrangentes
+│   ├── integration/             # Testes de integração
+│   ├── benchmark/               # Testes de performance
+│   └── testhelpers/             # Utilitários de teste
+├── docs/                        # Documentação completa
+│   └── swagger.yaml             # Especificação da API
+├── docker-compose.yml           # Ambiente de desenvolvimento
+├── Makefile                     # Comandos de desenvolvimento
+└── README.md                    # Guia específico do backend
 ```
 
 ## 🤝 Como Contribuir
@@ -190,18 +126,29 @@ aluguei/
   - Siga os padrões de código (veja docs/11_Contribuindo.md)
   - Abra um Pull Request contra main
 
-### Padrões de Código
+### Comandos de Desenvolvimento
 
 ```bash
-    # Backend (Go)
-    go fmt ./...
-    go vet ./...
-    golangci-lint run
+# Testes
+make test              # Todos os testes
+make test-unit         # Testes unitários
+make test-integration  # Testes de integração
+make benchmark         # Testes de performance
 
-    # Frontend
-    npm run lint
-    npm run type-check
-    npm run test
+# Desenvolvimento
+make dev               # Inicia aplicação
+make seed              # Popula banco com dados
+make build             # Build da aplicação
+make clean             # Limpa arquivos temporários
+
+# Docker
+make docker-up         # Sobe serviços
+make docker-down       # Para serviços
+make docker-logs       # Visualiza logs
+
+# Qualidade de código
+go fmt ./...
+go vet ./...
 ```
 
 ## 🔒 Segurança e LGPD
@@ -216,7 +163,7 @@ aluguei/
 
 ## 📞 Contato
 
-- Autor/Maintainer: Seu Nome
+- Autor/Maintainer: Turgho
 - Email: contato@aluguei.app
 - Site: https://aluguei.app (futuro)
 
