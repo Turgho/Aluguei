@@ -38,6 +38,36 @@ export interface Owner {
   updated_at: string;
 }
 
+export interface DashboardResponse {
+  total_properties: number;
+  rented_properties: number;
+  available_properties: number;
+  monthly_revenue: number;
+  pending_payments: number;
+  overdue_payments: number;
+  recent_payments: RecentPayment[];
+  monthly_revenues: MonthlyRevenue[];
+  property_status: PropertyStatusCount[];
+}
+
+export interface RecentPayment {
+  id: string;
+  tenant: string;
+  property: string;
+  amount: number;
+  date: string;
+}
+
+export interface MonthlyRevenue {
+  month: string;
+  revenue: number;
+}
+
+export interface PropertyStatusCount {
+  status: string;
+  count: number;
+}
+
 export interface ApiError {
   error: string;
 }

@@ -19,7 +19,7 @@ export default function WelcomeScreen() {
           {/* Welcome Image */}
           <View className="items-center mb-8">
             <Image 
-              source={require('../../assets/images/welcome.svg')}
+              source={require('../../assets/images/welcome.png')}
               style={{ width: imageWidth, height: 200 }}
               resizeMode="contain"
             />

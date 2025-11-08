@@ -46,6 +46,11 @@ class ApiService {
       body: JSON.stringify(data),
     });
   }
+
+  // Dashboard endpoints
+  async getDashboard(ownerId: string): Promise<import('../types/api').DashboardResponse> {
+    return this.request<import('../types/api').DashboardResponse>(`/dashboard/owner/${ownerId}`);
+  }
 }
 
 export const apiService = new ApiService();

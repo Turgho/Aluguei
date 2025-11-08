@@ -45,9 +45,9 @@ export default function LoginScreen() {
       login(data.token, data.owner);
       
       setStatus({ type: 'success', message: `Bem-vindo, ${data.owner.name}!` });
-      // TODO: Navegar para dashboard
+      // Navega para dashboard após login bem-sucedido
       setTimeout(() => {
-        // router.push('/dashboard');
+        router.push('./dashboard');
       }, 1500);
     } catch (error: any) {
       setStatus({ type: 'error', message: error.message || 'Erro ao fazer login' });
