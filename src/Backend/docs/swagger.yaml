@@ -29,6 +29,8 @@ tags:
     description: Operações relacionadas a contratos
   - name: Payments
     description: Operações relacionadas a pagamentos
+  - name: Dashboard
+    description: Operações do dashboard
 
 paths:
   # =============================================
@@ -781,6 +783,33 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  # =============================================
+  # DASHBOARD
+  # =============================================
+  /dashboard/owner/{ownerId}:
+    get:
+      tags:
+        - Dashboard
+      summary: Obter dados do dashboard do proprietário
+      parameters:
+        - name: ownerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dados do dashboard retornados com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   parameters:
     Page:
@@ -1439,3 +1468,83 @@ components:
             $ref: '#/components/schemas/Payment'
         pagination:
           $ref: '#/components/schemas/Pagination'
+
+    # =============================================
+    # DASHBOARD
+    # =============================================
+    DashboardResponse:
+      type: object
+      properties:
+        total_properties:
+          type: integer
+          example: 12
+        rented_properties:
+          type: integer
+          example: 8
+        available_properties:
+          type: integer
+          example: 4
+        monthly_revenue:
+          type: number
+          format: float
+          example: 18500.00
+        pending_payments:
+          type: integer
+          example: 3
+        overdue_payments:
+          type: integer
+          example: 1
+        recent_payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecentPayment'
+        monthly_revenues:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonthlyRevenue'
+        property_status:
+          type: array
+          items:
+            $ref: '#/components/schemas/PropertyStatusCount'
+
+    RecentPayment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant:
+          type: string
+          example: "Maria Silva"
+        property:
+          type: string
+          example: "Apt 101"
+        amount:
+          type: number
+          format: float
+          example: 1500.00
+        date:
+          type: string
+          format: date
+          example: "2024-01-05"
+
+    MonthlyRevenue:
+      type: object
+      properties:
+        month:
+          type: string
+          example: "Jan"
+        revenue:
+          type: number
+          format: float
+          example: 15000.00
+
+    PropertyStatusCount:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "Alugadas"
+        count:
+          type: integer
+          example: 8

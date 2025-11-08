@@ -44,6 +44,7 @@ func New(db *gorm.DB) *Server {
 	propertyHandler := handlers.NewPropertyHandler(propertyUseCase)
 	contractHandler := handlers.NewContractHandler(contractUseCase)
 	paymentHandler := handlers.NewPaymentHandler(paymentUseCase)
+	dashboardHandler := handlers.NewDashboardHandler(propertyUseCase, contractUseCase, paymentUseCase)
 	healthHandler := handlers.NewHealthHandler(db)
 	swaggerHandler := handlers.NewSwaggerHandler()
 
@@ -137,6 +138,12 @@ func New(db *gorm.DB) *Server {
 			payments.GET("/contract/:contractId", paymentHandler.GetPaymentsByContract)
 			payments.GET("/overdue", paymentHandler.GetOverduePayments)
 			payments.GET("/period", paymentHandler.GetPaymentsByPeriod)
+		}
+
+		// Dashboard routes
+		dashboard := api.Group("/dashboard")
+		{
+			dashboard.GET("/owner/:ownerId", dashboardHandler.GetDashboard)
 		}
 	}
 

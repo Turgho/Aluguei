@@ -63,3 +63,9 @@ func (uc *PaymentUseCase) UpdatePayment(ctx context.Context, id uuid.UUID, amoun
 func (uc *PaymentUseCase) DeletePayment(ctx context.Context, id uuid.UUID) error {
 	return uc.paymentRepo.Delete(ctx, id)
 }
+
+func (uc *PaymentUseCase) GetPaymentsByProperty(ctx context.Context, propertyID uuid.UUID, page, limit int) ([]*entities.Payment, int64, error) {
+	// Esta função precisaria ser implementada no repositório
+	// Por enquanto, retorna lista vazia
+	return []*entities.Payment{}, 0, nil
+}

@@ -63,3 +63,7 @@ func (uc *ContractUseCase) UpdateContract(ctx context.Context, id uuid.UUID, sta
 func (uc *ContractUseCase) DeleteContract(ctx context.Context, id uuid.UUID) error {
 	return uc.contractRepo.Delete(ctx, id)
 }
+
+func (uc *ContractUseCase) GetContractByID(ctx context.Context, id uuid.UUID) (*entities.Contract, error) {
+	return uc.contractRepo.GetByID(ctx, id)
+}
