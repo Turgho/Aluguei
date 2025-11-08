@@ -1,47 +1,120 @@
-openapi: 3.0.3
+openapi: 3.0.0
 info:
   title: Aluguei API
-  description: Sistema de gerenciamento de aluguéis - API completa para proprietários, inquilinos, propriedades, contratos e pagamentos
+  description: Sistema de gestão de aluguéis imobiliários
   version: 1.0.0
   contact:
-    name: Equipe Aluguei
-    email: suporte@aluguei.com
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
+    name: Aluguei Team
+    email: contato@aluguei.app
 
 servers:
   - url: http://localhost:8080/api/v1
-    description: Servidor de desenvolvimento
-  - url: https://api.aluguei.com/v1
-    description: Servidor de produção
+    description: Development server
 
-tags:
-  - name: Auth
-    description: Operações de autenticação
-  - name: Owners
-    description: Operações relacionadas a proprietários
-  - name: Properties
-    description: Operações relacionadas a propriedades
-  - name: Tenants
-    description: Operações relacionadas a inquilinos
-  - name: Contracts
-    description: Operações relacionadas a contratos
-  - name: Payments
-    description: Operações relacionadas a pagamentos
-  - name: Dashboard
-    description: Operações do dashboard
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtido através do endpoint de login
+
+  schemas:
+    Owner:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        birth_date:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Property:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zip_code:
+          type: string
+        bedrooms:
+          type: integer
+        bathrooms:
+          type: integer
+        area:
+          type: integer
+        rent_amount:
+          type: number
+        status:
+          type: string
+          enum: [available, rented, maintenance]
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        owner:
+          $ref: '#/components/schemas/Owner'
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+security:
+  - BearerAuth: []
 
 paths:
-  # =============================================
-  # AUTENTICAÇÃO
-  # =============================================
   /auth/login:
     post:
       tags:
-        - Auth
-      summary: Login do usuário
-      description: Autentica um usuário (proprietário) e retorna token JWT
+        - Authentication
+      summary: Login do proprietário
+      security: []
       requestBody:
         required: true
         content:
@@ -56,24 +129,46 @@ paths:
               schema:
                 $ref: '#/components/schemas/LoginResponse'
         '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
-  # =============================================
-  # PROPRIETÁRIOS (OWNERS)
-  # =============================================
   /owners:
     post:
       tags:
         - Owners
       summary: Criar novo proprietário
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/OwnerCreate'
+              type: object
+              required:
+                - name
+                - email
+                - password
+                - phone
+                - cpf
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                phone:
+                  type: string
+                cpf:
+                  type: string
+                birth_date:
+                  type: string
+                  format: date
       responses:
         '201':
           description: Proprietário criado com sucesso
@@ -82,115 +177,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/Owner'
         '400':
-          $ref: '#/components/responses/BadRequestError'
-        '409':
-          $ref: '#/components/responses/ConflictError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
     get:
       tags:
         - Owners
-      summary: Listar todos os proprietários
+      summary: Listar proprietários
       parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/Limit'
-      responses:
-        '200':
-          description: Lista de proprietários retornada com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedOwners'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /owners/{id}:
-    get:
-      tags:
-        - Owners
-      summary: Buscar proprietário por ID
-      parameters:
-        - $ref: '#/components/parameters/OwnerId'
-      responses:
-        '200':
-          description: Proprietário encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Owner'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-    put:
-      tags:
-        - Owners
-      summary: Atualizar proprietário
-      parameters:
-        - $ref: '#/components/parameters/OwnerId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/OwnerUpdate'
-      responses:
-        '200':
-          description: Proprietário atualizado com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Owner'
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-    delete:
-      tags:
-        - Owners
-      summary: Deletar proprietário
-      parameters:
-        - $ref: '#/components/parameters/OwnerId'
-      responses:
-        '204':
-          description: Proprietário deletado com sucesso
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /owners/email/{email}:
-    get:
-      tags:
-        - Owners
-      summary: Buscar proprietário por email
-      parameters:
-        - name: email
-          in: path
-          required: true
+        - name: page
+          in: query
           schema:
-            type: string
-            format: email
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
       responses:
         '200':
-          description: Proprietário encontrado
+          description: Lista de proprietários
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Owner'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Owner'
+                  pagination:
+                    type: object
+        '401':
+          description: Token inválido ou ausente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
-  # =============================================
-  # PROPRIEDADES (PROPERTIES)
-  # =============================================
   /properties:
     post:
       tags:
@@ -201,7 +229,41 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PropertyCreate'
+              type: object
+              required:
+                - owner_id
+                - title
+                - address
+                - city
+                - state
+                - rent_amount
+              properties:
+                owner_id:
+                  type: string
+                  format: uuid
+                title:
+                  type: string
+                description:
+                  type: string
+                address:
+                  type: string
+                city:
+                  type: string
+                state:
+                  type: string
+                zip_code:
+                  type: string
+                bedrooms:
+                  type: integer
+                bathrooms:
+                  type: integer
+                area:
+                  type: integer
+                rent_amount:
+                  type: number
+                status:
+                  type: string
+                  enum: [available, rented, maintenance]
       responses:
         '201':
           description: Propriedade criada com sucesso
@@ -209,583 +271,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Property'
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+        '401':
+          description: Token inválido ou ausente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
     get:
       tags:
         - Properties
-      summary: Listar todas as propriedades
+      summary: Listar propriedades
       parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/Limit'
-        - name: status
+        - name: page
           in: query
           schema:
-            $ref: '#/components/schemas/PropertyStatus'
-      responses:
-        '200':
-          description: Lista de propriedades retornada com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedProperties'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /properties/{id}:
-    get:
-      tags:
-        - Properties
-      summary: Buscar propriedade por ID
-      parameters:
-        - $ref: '#/components/parameters/PropertyId'
-      responses:
-        '200':
-          description: Propriedade encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Property'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-    put:
-      tags:
-        - Properties
-      summary: Atualizar propriedade
-      parameters:
-        - $ref: '#/components/parameters/PropertyId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PropertyUpdate'
-      responses:
-        '200':
-          description: Propriedade atualizada com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Property'
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-    delete:
-      tags:
-        - Properties
-      summary: Deletar propriedade
-      parameters:
-        - $ref: '#/components/parameters/PropertyId'
-      responses:
-        '204':
-          description: Propriedade deletada com sucesso
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /properties/owner/{ownerId}:
-    get:
-      tags:
-        - Properties
-      summary: Listar propriedades por proprietário
-      parameters:
-        - name: ownerId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Lista de propriedades do proprietário
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Property'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  # =============================================
-  # INQUILINOS (TENANTS)
-  # =============================================
-  /tenants:
-    post:
-      tags:
-        - Tenants
-      summary: Criar novo inquilino
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TenantCreate'
-      responses:
-        '201':
-          description: Inquilino criado com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Tenant'
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '409':
-          $ref: '#/components/responses/ConflictError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-    get:
-      tags:
-        - Tenants
-      summary: Listar todos os inquilinos
-      parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/Limit'
-      responses:
-        '200':
-          description: Lista de inquilinos retornada com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedTenants'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /tenants/{id}:
-    get:
-      tags:
-        - Tenants
-      summary: Buscar inquilino por ID
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-      responses:
-        '200':
-          description: Inquilino encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Tenant'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-    delete:
-      tags:
-        - Tenants
-      summary: Deletar inquilino
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-      responses:
-        '204':
-          description: Inquilino deletado com sucesso
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /tenants/owner/{ownerId}:
-    get:
-      tags:
-        - Tenants
-      summary: Listar inquilinos por proprietário
-      parameters:
-        - name: ownerId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Lista de inquilinos do proprietário
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Tenant'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  # =============================================
-  # CONTRATOS (CONTRACTS)
-  # =============================================
-  /contracts:
-    post:
-      tags:
-        - Contracts
-      summary: Criar novo contrato
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ContractCreate'
-      responses:
-        '201':
-          description: Contrato criado com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Contract'
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-    get:
-      tags:
-        - Contracts
-      summary: Listar todos os contratos
-      parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/Limit'
-        - name: status
+            type: integer
+            default: 1
+        - name: limit
           in: query
           schema:
-            $ref: '#/components/schemas/ContractStatus'
+            type: integer
+            default: 20
       responses:
         '200':
-          description: Lista de contratos retornada com sucesso
+          description: Lista de propriedades
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedContracts'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /contracts/{id}:
-    get:
-      tags:
-        - Contracts
-      summary: Buscar contrato por ID
-      parameters:
-        - $ref: '#/components/parameters/ContractId'
-      responses:
-        '200':
-          description: Contrato encontrado
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Property'
+                  pagination:
+                    type: object
+        '401':
+          description: Token inválido ou ausente
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Contract'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: '#/components/schemas/Error'
 
-    put:
-      tags:
-        - Contracts
-      summary: Atualizar contrato
-      parameters:
-        - $ref: '#/components/parameters/ContractId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ContractUpdate'
-      responses:
-        '200':
-          description: Contrato atualizado com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessMessage'
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-    delete:
-      tags:
-        - Contracts
-      summary: Deletar contrato
-      parameters:
-        - $ref: '#/components/parameters/ContractId'
-      responses:
-        '204':
-          description: Contrato deletado com sucesso
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /contracts/property/{propertyId}:
-    get:
-      tags:
-        - Contracts
-      summary: Listar contratos por propriedade
-      parameters:
-        - name: propertyId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Lista de contratos da propriedade
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Contract'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /contracts/tenant/{tenantId}:
-    get:
-      tags:
-        - Contracts
-      summary: Listar contratos por inquilino
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Lista de contratos do inquilino
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Contract'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /contracts/property/{propertyId}/active:
-    get:
-      tags:
-        - Contracts
-      summary: Buscar contrato ativo por propriedade
-      parameters:
-        - name: propertyId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Contrato ativo encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Contract'
-        '404':
-          description: Nenhum contrato ativo encontrado para esta propriedade
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  # =============================================
-  # PAGAMENTOS (PAYMENTS)
-  # =============================================
-  /payments:
-    post:
-      tags:
-        - Payments
-      summary: Criar novo pagamento
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PaymentCreate'
-      responses:
-        '201':
-          description: Pagamento criado com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Payment'
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-    get:
-      tags:
-        - Payments
-      summary: Listar todos os pagamentos
-      parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/Limit'
-      responses:
-        '200':
-          description: Lista de pagamentos retornada com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedPayments'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /payments/{id}:
-    get:
-      tags:
-        - Payments
-      summary: Buscar pagamento por ID
-      parameters:
-        - $ref: '#/components/parameters/PaymentId'
-      responses:
-        '200':
-          description: Pagamento encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Payment'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-    put:
-      tags:
-        - Payments
-      summary: Atualizar pagamento
-      parameters:
-        - $ref: '#/components/parameters/PaymentId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PaymentUpdate'
-      responses:
-        '200':
-          description: Pagamento atualizado com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessMessage'
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-    delete:
-      tags:
-        - Payments
-      summary: Deletar pagamento
-      parameters:
-        - $ref: '#/components/parameters/PaymentId'
-      responses:
-        '204':
-          description: Pagamento deletado com sucesso
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /payments/contract/{contractId}:
-    get:
-      tags:
-        - Payments
-      summary: Listar pagamentos por contrato
-      parameters:
-        - name: contractId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Lista de pagamentos do contrato
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Payment'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /payments/overdue:
-    get:
-      tags:
-        - Payments
-      summary: Listar pagamentos em atraso
-      responses:
-        '200':
-          description: Lista de pagamentos em atraso
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Payment'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /payments/period:
-    get:
-      tags:
-        - Payments
-      summary: Listar pagamentos por período
-      parameters:
-        - name: startDate
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-        - name: endDate
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-      responses:
-        '200':
-          description: Lista de pagamentos no período
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Payment'
-        '400':
-          description: Parâmetros de data inválidos
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  # =============================================
-  # DASHBOARD
-  # =============================================
   /dashboard/owner/{ownerId}:
     get:
       tags:
@@ -800,751 +328,27 @@ paths:
             format: uuid
       responses:
         '200':
-          description: Dados do dashboard retornados com sucesso
+          description: Dados do dashboard
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DashboardResponse'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-components:
-  parameters:
-    Page:
-      name: page
-      in: query
-      schema:
-        type: integer
-        minimum: 1
-        default: 1
-    Limit:
-      name: limit
-      in: query
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 100
-        default: 20
-    OwnerId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-    PropertyId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-    TenantId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-    ContractId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-    PaymentId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-
-  responses:
-    BadRequestError:
-      description: Requisição inválida
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    UnauthorizedError:
-      description: Não autorizado
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    NotFoundError:
-      description: Recurso não encontrado
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    ConflictError:
-      description: Conflito (registro duplicado)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    InternalServerError:
-      description: Erro interno do servidor
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-  schemas:
-    # =============================================
-    # SCHEMAS COMUNS
-    # =============================================
-    Error:
-      type: object
-      properties:
-        error:
-          type: string
-          example: "Error message"
-      required:
-        - error
-
-    Pagination:
-      type: object
-      properties:
-        page:
-          type: integer
-          example: 1
-        limit:
-          type: integer
-          example: 20
-        total:
-          type: integer
-          example: 100
-        pages:
-          type: integer
-          example: 5
-
-    SuccessMessage:
-      type: object
-      properties:
-        message:
-          type: string
-          example: "Operation completed successfully"
-
-    # =============================================
-    # AUTENTICAÇÃO
-    # =============================================
-    LoginRequest:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-          example: "proprietario@exemplo.com"
-        password:
-          type: string
-          example: "senha123"
-      required:
-        - email
-        - password
-
-    LoginResponse:
-      type: object
-      properties:
-        token:
-          type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        expires_at:
-          type: string
-          format: date-time
-        owner:
-          $ref: '#/components/schemas/Owner'
-
-    # =============================================
-    # PROPRIETÁRIOS
-    # =============================================
-    Owner:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-          example: "João Silva"
-        email:
-          type: string
-          format: email
-          example: "joao.silva@exemplo.com"
-        phone:
-          type: string
-          example: "+5511999999999"
-        cpf:
-          type: string
-          example: "123.456.789-00"
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    OwnerCreate:
-      type: object
-      properties:
-        name:
-          type: string
-          example: "João Silva"
-        email:
-          type: string
-          format: email
-          example: "joao.silva@exemplo.com"
-        phone:
-          type: string
-          example: "+5511999999999"
-        password:
-          type: string
-          example: "senha123"
-        cpf:
-          type: string
-          example: "12345678900"
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-      required:
-        - name
-        - email
-        - phone
-        - password
-        - cpf
-
-    OwnerUpdate:
-      type: object
-      properties:
-        name:
-          type: string
-        email:
-          type: string
-          format: email
-        phone:
-          type: string
-        cpf:
-          type: string
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-
-    PaginatedOwners:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/Owner'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-
-    # =============================================
-    # PROPRIEDADES
-    # =============================================
-    PropertyStatus:
-      type: string
-      enum: [available, rented, maintenance, inactive]
-
-    Property:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        title:
-          type: string
-          example: "Apartamento Centro - 2 Quartos"
-        description:
-          type: string
-          example: "Apartamento bem localizado"
-        address:
-          type: string
-          example: "Rua das Flores, 123"
-        city:
-          type: string
-          example: "São Paulo"
-        state:
-          type: string
-          example: "SP"
-        zip_code:
-          type: string
-          example: "01234-567"
-        rent_amount:
-          type: number
-          format: float
-          example: 1500.00
-        area:
-          type: integer
-          example: 70
-        bedrooms:
-          type: integer
-          example: 2
-        bathrooms:
-          type: integer
-          example: 2
-        status:
-          $ref: '#/components/schemas/PropertyStatus'
-        owner_id:
-          type: string
-          format: uuid
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    PropertyCreate:
-      type: object
-      properties:
-        title:
-          type: string
-          example: "Apartamento Centro - 2 Quartos"
-        description:
-          type: string
-        address:
-          type: string
-          example: "Rua das Flores, 123"
-        city:
-          type: string
-          example: "São Paulo"
-        state:
-          type: string
-          example: "SP"
-        zip_code:
-          type: string
-        rent_amount:
-          type: number
-          format: float
-          example: 1500.00
-        area:
-          type: integer
-        bedrooms:
-          type: integer
-        bathrooms:
-          type: integer
-        status:
-          $ref: '#/components/schemas/PropertyStatus'
-        owner_id:
-          type: string
-          format: uuid
-      required:
-        - title
-        - address
-        - city
-        - state
-        - rent_amount
-        - owner_id
-
-    PropertyUpdate:
-      type: object
-      properties:
-        title:
-          type: string
-        description:
-          type: string
-        address:
-          type: string
-        city:
-          type: string
-        state:
-          type: string
-        zip_code:
-          type: string
-        rent_amount:
-          type: number
-          format: float
-        area:
-          type: integer
-        bedrooms:
-          type: integer
-        bathrooms:
-          type: integer
-        status:
-          $ref: '#/components/schemas/PropertyStatus'
-
-    PaginatedProperties:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/Property'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-
-    # =============================================
-    # INQUILINOS
-    # =============================================
-    Tenant:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-          example: "Maria Santos"
-        email:
-          type: string
-          format: email
-          example: "maria.santos@exemplo.com"
-        phone:
-          type: string
-          example: "+5511988887777"
-        cpf:
-          type: string
-          example: "98765432100"
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-        owner_id:
-          type: string
-          format: uuid
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    TenantCreate:
-      type: object
-      properties:
-        name:
-          type: string
-          example: "Maria Santos"
-        email:
-          type: string
-          format: email
-          example: "maria.santos@exemplo.com"
-        phone:
-          type: string
-          example: "+5511988887777"
-        cpf:
-          type: string
-          example: "98765432100"
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-        owner_id:
-          type: string
-          format: uuid
-      required:
-        - name
-        - email
-        - phone
-        - cpf
-        - owner_id
-
-    PaginatedTenants:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/Tenant'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-
-    # =============================================
-    # CONTRATOS
-    # =============================================
-    ContractStatus:
-      type: string
-      enum: [active, expired, cancelled, pending]
-
-    Contract:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        property_id:
-          type: string
-          format: uuid
-        tenant_id:
-          type: string
-          format: uuid
-        start_date:
-          type: string
-          format: date
-          example: "2024-01-01"
-        end_date:
-          type: string
-          format: date
-          example: "2024-12-31"
-        monthly_rent:
-          type: number
-          format: float
-          example: 1500.00
-        payment_due_day:
-          type: integer
-          minimum: 1
-          maximum: 28
-          example: 5
-        status:
-          $ref: '#/components/schemas/ContractStatus'
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    ContractCreate:
-      type: object
-      properties:
-        property_id:
-          type: string
-          format: uuid
-        tenant_id:
-          type: string
-          format: uuid
-        start_date:
-          type: string
-          format: date
-          example: "2024-01-01"
-        end_date:
-          type: string
-          format: date
-          example: "2024-12-31"
-        monthly_rent:
-          type: number
-          format: float
-          example: 1500.00
-        payment_due_day:
-          type: integer
-          minimum: 1
-          maximum: 28
-          example: 5
-        status:
-          $ref: '#/components/schemas/ContractStatus'
-      required:
-        - property_id
-        - tenant_id
-        - start_date
-        - monthly_rent
-        - payment_due_day
-
-    ContractUpdate:
-      type: object
-      properties:
-        start_date:
-          type: string
-          format: date
-        end_date:
-          type: string
-          format: date
-        monthly_rent:
-          type: number
-          format: float
-        payment_due_day:
-          type: integer
-          minimum: 1
-          maximum: 28
-        status:
-          $ref: '#/components/schemas/ContractStatus'
-
-    PaginatedContracts:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/Contract'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-
-    # =============================================
-    # PAGAMENTOS
-    # =============================================
-    PaymentStatus:
-      type: string
-      enum: [pending, paid, overdue, partial]
-
-    PaymentMethod:
-      type: string
-      enum: [pix, bank_transfer, cash, check]
-
-    Payment:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        contract_id:
-          type: string
-          format: uuid
-        due_date:
-          type: string
-          format: date
-          example: "2024-01-05"
-        paid_date:
-          type: string
-          format: date
-          nullable: true
-        amount:
-          type: number
-          format: float
-          example: 1500.00
-        amount_paid:
-          type: number
-          format: float
-          nullable: true
-        status:
-          $ref: '#/components/schemas/PaymentStatus'
-        payment_method:
-          $ref: '#/components/schemas/PaymentMethod'
-        notes:
-          type: string
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    PaymentCreate:
-      type: object
-      properties:
-        contract_id:
-          type: string
-          format: uuid
-        due_date:
-          type: string
-          format: date
-          example: "2024-01-05"
-        amount:
-          type: number
-          format: float
-          example: 1500.00
-        payment_method:
-          $ref: '#/components/schemas/PaymentMethod'
-        notes:
-          type: string
-      required:
-        - contract_id
-        - due_date
-        - amount
-
-    PaymentUpdate:
-      type: object
-      properties:
-        paid_date:
-          type: string
-          format: date
-        amount_paid:
-          type: number
-          format: float
-        status:
-          $ref: '#/components/schemas/PaymentStatus'
-        payment_method:
-          $ref: '#/components/schemas/PaymentMethod'
-        notes:
-          type: string
-
-    PaginatedPayments:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/Payment'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-
-    # =============================================
-    # DASHBOARD
-    # =============================================
-    DashboardResponse:
-      type: object
-      properties:
-        total_properties:
-          type: integer
-          example: 12
-        rented_properties:
-          type: integer
-          example: 8
-        available_properties:
-          type: integer
-          example: 4
-        monthly_revenue:
-          type: number
-          format: float
-          example: 18500.00
-        pending_payments:
-          type: integer
-          example: 3
-        overdue_payments:
-          type: integer
-          example: 1
-        recent_payments:
-          type: array
-          items:
-            $ref: '#/components/schemas/RecentPayment'
-        monthly_revenues:
-          type: array
-          items:
-            $ref: '#/components/schemas/MonthlyRevenue'
-        property_status:
-          type: array
-          items:
-            $ref: '#/components/schemas/PropertyStatusCount'
-
-    RecentPayment:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        tenant:
-          type: string
-          example: "Maria Silva"
-        property:
-          type: string
-          example: "Apt 101"
-        amount:
-          type: number
-          format: float
-          example: 1500.00
-        date:
-          type: string
-          format: date
-          example: "2024-01-05"
-
-    MonthlyRevenue:
-      type: object
-      properties:
-        month:
-          type: string
-          example: "Jan"
-        revenue:
-          type: number
-          format: float
-          example: 15000.00
-
-    PropertyStatusCount:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "Alugadas"
-        count:
-          type: integer
-          example: 8
+                type: object
+                properties:
+                  total_properties:
+                    type: integer
+                  rented_properties:
+                    type: integer
+                  available_properties:
+                    type: integer
+                  monthly_revenue:
+                    type: number
+                  pending_payments:
+                    type: integer
+                  overdue_payments:
+                    type: integer
+        '401':
+          description: Token inválido ou ausente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

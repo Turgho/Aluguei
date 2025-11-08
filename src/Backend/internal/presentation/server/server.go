@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Turgho/Aluguei/internal/application/usecases"
+	"github.com/Turgho/Aluguei/internal/infrastructure/middleware"
 	"github.com/Turgho/Aluguei/internal/infrastructure/persistence"
 	"github.com/Turgho/Aluguei/internal/presentation/handlers"
 	"github.com/gin-gonic/gin"
@@ -85,16 +86,19 @@ func New(db *gorm.DB) *Server {
 		// Owner routes
 		owners := api.Group("/owners")
 		{
-			owners.POST("", ownerHandler.CreateOwner)
-			owners.GET("", ownerHandler.GetAllOwners)
-			owners.GET("/:id", ownerHandler.GetOwner)
-			owners.PUT("/:id", ownerHandler.UpdateOwner)
-			owners.DELETE("/:id", ownerHandler.DeleteOwner)
-			owners.GET("/email/:email", ownerHandler.GetOwnerByEmail)
+			owners.POST("", ownerHandler.CreateOwner) // Public - registration
+			
+			// Protected routes
+			protected := owners.Use(middleware.AuthMiddleware(jwtSecret))
+			protected.GET("", ownerHandler.GetAllOwners)
+			protected.GET("/:id", ownerHandler.GetOwner)
+			protected.PUT("/:id", ownerHandler.UpdateOwner)
+			protected.DELETE("/:id", ownerHandler.DeleteOwner)
+			protected.GET("/email/:email", ownerHandler.GetOwnerByEmail)
 		}
 
-		// Tenant routes
-		tenants := api.Group("/tenants")
+		// Tenant routes (all protected)
+		tenants := api.Group("/tenants").Use(middleware.AuthMiddleware(jwtSecret))
 		{
 			tenants.POST("", tenantHandler.CreateTenant)
 			tenants.GET("", tenantHandler.GetAllTenants)
@@ -103,8 +107,8 @@ func New(db *gorm.DB) *Server {
 			tenants.GET("/owner/:ownerId", tenantHandler.GetTenantsByOwner)
 		}
 
-		// Property routes
-		properties := api.Group("/properties")
+		// Property routes (all protected)
+		properties := api.Group("/properties").Use(middleware.AuthMiddleware(jwtSecret))
 		{
 			properties.POST("", propertyHandler.CreateProperty)
 			properties.GET("", propertyHandler.GetAllProperties)
@@ -114,8 +118,8 @@ func New(db *gorm.DB) *Server {
 			properties.GET("/owner/:ownerId", propertyHandler.GetPropertiesByOwner)
 		}
 
-		// Contract routes
-		contracts := api.Group("/contracts")
+		// Contract routes (all protected)
+		contracts := api.Group("/contracts").Use(middleware.AuthMiddleware(jwtSecret))
 		{
 			contracts.POST("", contractHandler.CreateContract)
 			contracts.GET("", contractHandler.GetContracts)
@@ -127,8 +131,8 @@ func New(db *gorm.DB) *Server {
 			contracts.GET("/property/:propertyId/active", contractHandler.GetActiveContractByProperty)
 		}
 
-		// Payment routes
-		payments := api.Group("/payments")
+		// Payment routes (all protected)
+		payments := api.Group("/payments").Use(middleware.AuthMiddleware(jwtSecret))
 		{
 			payments.POST("", paymentHandler.CreatePayment)
 			payments.GET("", paymentHandler.GetPayments)
@@ -140,8 +144,8 @@ func New(db *gorm.DB) *Server {
 			payments.GET("/period", paymentHandler.GetPaymentsByPeriod)
 		}
 
-		// Dashboard routes
-		dashboard := api.Group("/dashboard")
+		// Dashboard routes (all protected)
+		dashboard := api.Group("/dashboard").Use(middleware.AuthMiddleware(jwtSecret))
 		{
 			dashboard.GET("/owner/:ownerId", dashboardHandler.GetDashboard)
 		}

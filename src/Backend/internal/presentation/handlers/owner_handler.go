@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Turgho/Aluguei/internal/application/usecases"
+	"github.com/Turgho/Aluguei/internal/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -44,6 +45,12 @@ func (h *OwnerHandler) CreateOwner(c *gin.Context) {
 		return
 	}
 
+	// Validate CPF
+	if !utils.ValidateCPF(req.CPF) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid CPF"})
+		return
+	}
+
 	var birthDate *time.Time
 	if req.BirthDate != "" {
 		if parsed, err := time.Parse("2006-01-02", req.BirthDate); err == nil {
@@ -65,7 +72,18 @@ func (h *OwnerHandler) CreateOwner(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, owner)
+	// Create DTO without CPF
+	ownerDTO := OwnerDTO{
+		ID:        owner.ID.String(),
+		Name:      owner.Name,
+		Email:     owner.Email,
+		Phone:     owner.Phone,
+		BirthDate: owner.BirthDate,
+		CreatedAt: owner.CreatedAt,
+		UpdatedAt: owner.UpdatedAt,
+	}
+
+	c.JSON(http.StatusCreated, ownerDTO)
 }
 
 func (h *OwnerHandler) GetOwner(c *gin.Context) {
@@ -81,7 +99,18 @@ func (h *OwnerHandler) GetOwner(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, owner)
+	// Create DTO without CPF
+	ownerDTO := OwnerDTO{
+		ID:        owner.ID.String(),
+		Name:      owner.Name,
+		Email:     owner.Email,
+		Phone:     owner.Phone,
+		BirthDate: owner.BirthDate,
+		CreatedAt: owner.CreatedAt,
+		UpdatedAt: owner.UpdatedAt,
+	}
+
+	c.JSON(http.StatusOK, ownerDTO)
 }
 
 func (h *OwnerHandler) GetOwnerByEmail(c *gin.Context) {
@@ -93,7 +122,18 @@ func (h *OwnerHandler) GetOwnerByEmail(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, owner)
+	// Create DTO without CPF
+	ownerDTO := OwnerDTO{
+		ID:        owner.ID.String(),
+		Name:      owner.Name,
+		Email:     owner.Email,
+		Phone:     owner.Phone,
+		BirthDate: owner.BirthDate,
+		CreatedAt: owner.CreatedAt,
+		UpdatedAt: owner.UpdatedAt,
+	}
+
+	c.JSON(http.StatusOK, ownerDTO)
 }
 
 func (h *OwnerHandler) GetAllOwners(c *gin.Context) {
@@ -106,9 +146,23 @@ func (h *OwnerHandler) GetAllOwners(c *gin.Context) {
 		return
 	}
 
+	// Convert to DTOs without CPF
+	ownerDTOs := make([]OwnerDTO, len(owners))
+	for i, owner := range owners {
+		ownerDTOs[i] = OwnerDTO{
+			ID:        owner.ID.String(),
+			Name:      owner.Name,
+			Email:     owner.Email,
+			Phone:     owner.Phone,
+			BirthDate: owner.BirthDate,
+			CreatedAt: owner.CreatedAt,
+			UpdatedAt: owner.UpdatedAt,
+		}
+	}
+
 	totalPages := (int(total) + limit - 1) / limit
 	c.JSON(http.StatusOK, gin.H{
-		"data": owners,
+		"data": ownerDTOs,
 		"pagination": gin.H{
 			"page":  page,
 			"limit": limit,
@@ -153,7 +207,19 @@ func (h *OwnerHandler) UpdateOwner(c *gin.Context) {
 	}
 
 	owner, _ := h.ownerUseCase.GetOwner(c.Request.Context(), id)
-	c.JSON(http.StatusOK, owner)
+	
+	// Create DTO without CPF
+	ownerDTO := OwnerDTO{
+		ID:        owner.ID.String(),
+		Name:      owner.Name,
+		Email:     owner.Email,
+		Phone:     owner.Phone,
+		BirthDate: owner.BirthDate,
+		CreatedAt: owner.CreatedAt,
+		UpdatedAt: owner.UpdatedAt,
+	}
+
+	c.JSON(http.StatusOK, ownerDTO)
 }
 
 func (h *OwnerHandler) DeleteOwner(c *gin.Context) {

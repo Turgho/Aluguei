@@ -26,10 +26,20 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type OwnerDTO struct {
+	ID        string     `json:"id"`
+	Name      string     `json:"name"`
+	Email     string     `json:"email"`
+	Phone     string     `json:"phone"`
+	BirthDate *time.Time `json:"birth_date,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+}
+
 type LoginResponse struct {
-	Token     string      `json:"token"`
-	ExpiresAt time.Time   `json:"expires_at"`
-	Owner     interface{} `json:"owner"`
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+	Owner     OwnerDTO  `json:"owner"`
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -60,9 +70,20 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// Create DTO without sensitive data
+	ownerDTO := OwnerDTO{
+		ID:        owner.ID.String(),
+		Name:      owner.Name,
+		Email:     owner.Email,
+		Phone:     owner.Phone,
+		BirthDate: owner.BirthDate,
+		CreatedAt: owner.CreatedAt,
+		UpdatedAt: owner.UpdatedAt,
+	}
+
 	c.JSON(http.StatusOK, LoginResponse{
 		Token:     tokenString,
 		ExpiresAt: expiresAt,
-		Owner:     owner,
+		Owner:     ownerDTO,
 	})
 }
