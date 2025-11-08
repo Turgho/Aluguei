@@ -1,5 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 // URL base da API - usa variável de ambiente ou fallback para desenvolvimento local
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.6:8080/api/v1';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
 // Serviço centralizado para chamadas à API
 class ApiService {
@@ -9,12 +11,19 @@ class ApiService {
     this.baseURL = API_BASE_URL;
   }
 
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const token = await AsyncStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
+    const authHeaders = await this.getAuthHeaders();
     
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
+        ...authHeaders,
         ...options.headers,
       },
       ...options,
@@ -42,6 +51,14 @@ class ApiService {
   // Owner endpoints
   async createOwner(data: import('../types/api').CreateOwnerRequest): Promise<import('../types/api').Owner> {
     return this.request<import('../types/api').Owner>('/owners', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Property endpoints
+  async createProperty(data: import('../types/api').CreatePropertyRequest): Promise<import('../types/api').Property> {
+    return this.request<import('../types/api').Property>('/properties', {
       method: 'POST',
       body: JSON.stringify(data),
     });

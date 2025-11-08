@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import WelcomeHeader from '../components/welcome/WelcomeHeader';
 import WelcomeSvg from '../../assets/images/welcome.svg';
+import ScreenTransition from '../components/shared/ScreenTransition';
 import { useTheme } from '../contexts/ThemeContext';
 
 export default function WelcomeScreen() {
@@ -13,12 +13,11 @@ export default function WelcomeScreen() {
   
   return (
     <SafeAreaView className={`flex-1 ${isDark ? 'bg-dark-bg' : 'bg-white'}`}>
+      <ScreenTransition showLoading={false}>
 
       {/* Main Container */}
       <View className="flex-1 justify-center px-8">
         <View className="w-full max-w-md mx-auto">
-          <WelcomeHeader />
-          
           {/* Welcome Illustration */}
           <View className="items-center mb-8">
             <WelcomeSvg width={imageWidth} height={200} />
@@ -26,11 +25,11 @@ export default function WelcomeScreen() {
           
           {/* Welcome Text */}
           <View className="items-center mb-12">
-            <Text className={`${isDark ? 'text-orange-400' : 'text-orange-800'} text-xl font-semibold text-center mb-4`}>
-              Gestão imobiliária simplificada
+            <Text className={`${isDark ? 'text-dark-text' : 'text-gray-800'} text-2xl font-bold text-center mb-4`}>
+              Pronto para começar?
             </Text>
-            <Text className={`${isDark ? 'text-dark-muted' : 'text-orange-600'} text-center text-base`}>
-              Conecte proprietários e inquilinos
+            <Text className={`${isDark ? 'text-dark-muted' : 'text-gray-600'} text-center text-base`}>
+              Faça login ou crie sua conta para gerenciar seus imóveis
             </Text>
           </View>
 
@@ -58,6 +57,7 @@ export default function WelcomeScreen() {
 
         </View>
       </View>
+      </ScreenTransition>
     </SafeAreaView>
   );
 }

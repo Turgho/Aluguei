@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export default function BottomNavBar() {
@@ -20,9 +21,9 @@ export default function BottomNavBar() {
         elevation: 10
       }}
     >
-      <View className="flex-row justify-around py-3">
+      <View className="flex-row justify-around py-4 px-2">
         {/* Nova Propriedade */}
-        <TouchableOpacity className="items-center p-2">
+        <TouchableOpacity className="items-center p-2" onPress={() => router.push('./add-property')}>
           <View className="bg-orange-500 w-10 h-10 rounded-full items-center justify-center mb-1">
             <Ionicons name="add-circle" size={20} color="white" />
           </View>

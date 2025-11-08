@@ -5,33 +5,58 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import BottomNavBar from '../components/shared/BottomNavBar';
+import ScreenTransition from '../components/shared/ScreenTransition';
 import { apiService } from '../services/api';
 import type { DashboardResponse } from '../types/api';
+import { BottomNavBar, LoadingScreen, StatusBanner } from '../components';
 
 export default function DashboardScreen() {
-  const { owner, logout } = useAuth();
+  const { owner, logout, token } = useAuth();
   const { theme, toggleTheme, isDark } = useTheme();
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Verifica autenticação
+  useEffect(() => {
+    if (!token || !owner?.id) {
+      setAuthError('Acesso não autorizado. Faça login novamente.');
+      setTimeout(() => {
+        router.replace('./welcome');
+      }, 3000);
+      return;
+    }
+  }, [token, owner]);
 
   // Carrega dados do dashboard
   useEffect(() => {
     const loadDashboard = async () => {
-      if (!owner?.id) return;
+      if (!owner?.id || !token) return;
       
       try {
         const data = await apiService.getDashboard(owner.id);
         setDashboardData(data);
-      } catch (error) {
+        setError(null);
+      } catch (error: any) {
         console.error('Erro ao carregar dashboard:', error);
+        // Validação de token
+        if (error.message?.includes('authorization') || error.message?.includes('401')) {
+          setAuthError('Sessão expirada. Redirecionando para login...');
+          setTimeout(async () => {
+            await logout();
+            router.replace('./welcome');
+          }, 3000);
+        } else {
+          setError(error.message || 'Erro ao carregar dados');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     loadDashboard();
-  }, [owner?.id]);
+  }, [owner?.id, token]);
 
   const handleLogout = async () => {
     await logout();
@@ -39,9 +64,20 @@ export default function DashboardScreen() {
   };
 
   if (loading) {
+    return <LoadingScreen message="Carregando dashboard..." />;
+  }
+
+  if (error) {
     return (
-      <SafeAreaView className={`flex-1 ${isDark ? 'bg-dark-bg' : 'bg-white'} justify-center items-center`}>
-        <Text className={isDark ? 'text-dark-text' : 'text-gray-600'}>Carregando...</Text>
+      <SafeAreaView className={`flex-1 ${isDark ? 'bg-dark-bg' : 'bg-white'} justify-center items-center px-6`}>
+        <Ionicons name="warning" size={48} color="#dc2626" />
+        <Text className="text-red-600 text-center mt-4 mb-6">{error}</Text>
+        <TouchableOpacity 
+          onPress={() => router.replace('./welcome')}
+          className="bg-orange-500 px-6 py-3 rounded-xl"
+        >
+          <Text className="text-white font-semibold">Voltar ao Início</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -56,6 +92,7 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView className={`flex-1 ${isDark ? 'bg-dark-bg' : 'bg-white'}`}>
+      <ScreenTransition>
       {/* Header */}
       <View className={`px-6 py-4 border-b ${isDark ? 'border-dark-border' : 'border-gray-100'}`}>
         <View className="flex-row justify-between items-center">
@@ -66,6 +103,13 @@ export default function DashboardScreen() {
             <Text className={`${isDark ? 'text-dark-muted' : 'text-gray-600'} text-sm`}>Bem-vindo ao seu painel</Text>
           </View>
           <View className="flex-row items-center">
+            <TouchableOpacity onPress={() => router.push('./profile')} className="p-2 mr-2">
+              <Ionicons 
+                name="person-circle" 
+                size={24} 
+                color={isDark ? '#fb923c' : '#ea580c'} 
+              />
+            </TouchableOpacity>
             <TouchableOpacity onPress={toggleTheme} className="p-2 mr-2">
               <Ionicons 
                 name={isDark ? 'sunny' : 'moon'} 
@@ -217,6 +261,14 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
 
+      </ScreenTransition>
+      
+      {authError && (
+        <View className="absolute bottom-0 left-0 right-0">
+          <StatusBanner type="error" message={authError} />
+        </View>
+      )}
+      
       <BottomNavBar />
     </SafeAreaView>
   );

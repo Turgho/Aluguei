@@ -50,6 +50,40 @@ export interface DashboardResponse {
   property_status: PropertyStatusCount[];
 }
 
+// Property types
+export interface Property {
+  id: string;
+  owner_id: string;
+  title: string;
+  description: string;
+  address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  bedrooms: number;
+  bathrooms: number;
+  area: number;
+  rent_amount: number;
+  status: 'available' | 'rented' | 'maintenance' | 'inactive';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePropertyRequest {
+  owner_id: string;
+  title: string;
+  description?: string;
+  address: string;
+  city: string;
+  state: string;
+  zip_code?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  area?: number;
+  rent_amount: number;
+  status?: 'available' | 'rented' | 'maintenance' | 'inactive';
+}
+
 export interface RecentPayment {
   id: string;
   tenant: string;

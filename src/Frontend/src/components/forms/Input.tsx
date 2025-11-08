@@ -11,7 +11,7 @@ interface InputProps {
   iconName: keyof typeof Ionicons.glyphMap;
   secureTextEntry?: boolean;
   keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'numeric';
-  mask?: 'phone' | 'cpf' | 'date';
+  mask?: 'phone' | 'cpf' | 'date' | 'cep' | 'currency';
 }
 
 const applyMask = (text: string, mask?: string) => {
@@ -38,6 +38,19 @@ const applyMask = (text: string, mask?: string) => {
         .replace(/(\d{2})(\d)/, '$1/$2')
         .replace(/(\d{2})\/(\d{2})(\d)/, '$1/$2/$3')
         .substring(0, 10);
+    
+    case 'cep':
+      return numbers
+        .replace(/(\d{5})(\d)/, '$1-$2')
+        .substring(0, 9);
+    
+    case 'currency':
+      if (!numbers) return '';
+      const value = parseInt(numbers) / 100;
+      return value.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      });
     
     default:
       return text;

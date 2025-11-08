@@ -3,9 +3,8 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import Input from '../components/shared/Input';
-import Button from '../components/shared/Button';
-import StatusBanner from '../components/shared/StatusBanner';
+import { Button, Input, StatusBanner } from '../components';
+import ScreenTransition from '../components/shared/ScreenTransition';
 import { apiService } from '../services/api';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -70,6 +69,7 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView className={`flex-1 ${isDark ? 'bg-dark-bg' : 'bg-white'}`}>
+      <ScreenTransition showLoading={false}>
       <ScrollView className="flex-1 px-8" showsVerticalScrollIndicator={false}>
         <View className="w-full max-w-md mx-auto py-8">
           {/* Welcome Text */}
@@ -162,6 +162,7 @@ export default function RegisterScreen() {
           <StatusBanner type={status.type} message={status.message} />
         </View>
       )}
+      </ScreenTransition>
     </SafeAreaView>
   );
 }
