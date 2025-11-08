@@ -9,9 +9,11 @@ import Button from '../components/shared/Button';
 import StatusBanner from '../components/shared/StatusBanner';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function LoginScreen() {
   const { login } = useAuth();
+  const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState({
     email: '',
@@ -41,8 +43,8 @@ export default function LoginScreen() {
         form.password
       );
       
-      // Salva autenticação no contexto (memória apenas)
-      login(data.token, data.owner);
+      // Salva autenticação no contexto
+      await login(data.token, data.owner);
       
       setStatus({ type: 'success', message: `Bem-vindo, ${data.owner.name}!` });
       // Navega para dashboard após login bem-sucedido
@@ -60,7 +62,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className={`flex-1 ${isDark ? 'bg-dark-bg' : 'bg-white'}`}>
       {/* Main Container */}
       <View className="flex-1 px-8 justify-center">
         <View className="w-full max-w-md mx-auto">
@@ -69,10 +71,10 @@ export default function LoginScreen() {
             
             {/* Welcome Text */}
             <View className="items-center mb-4">
-              <Text className="text-orange-800 text-2xl font-semibold text-center mb-1">
+              <Text className={`${isDark ? 'text-orange-400' : 'text-orange-800'} text-2xl font-semibold text-center mb-1`}>
                 Bem-vindo de volta!
               </Text>
-              <Text className="text-orange-600 text-center text-sm">
+              <Text className={`${isDark ? 'text-dark-muted' : 'text-orange-600'} text-center text-sm`}>
                 Acesse sua conta para continuar
               </Text>
             </View>
@@ -100,7 +102,7 @@ export default function LoginScreen() {
               {/* Forgot Password */}
               <View className="items-end">
                 <TouchableOpacity>
-                  <Text className="text-orange-600 text-sm font-medium">Esqueceu a senha?</Text>
+                  <Text className={`${isDark ? 'text-orange-400' : 'text-orange-600'} text-sm font-medium`}>Esqueceu a senha?</Text>
                 </TouchableOpacity>
               </View>
               
@@ -113,7 +115,7 @@ export default function LoginScreen() {
             {/* Create Account Link */}
             <View className="items-center mb-6">
               <TouchableOpacity onPress={() => router.push('./register')}>
-                <Text className="text-orange-600 text-sm font-medium">
+                <Text className={`${isDark ? 'text-orange-400' : 'text-orange-600'} text-sm font-medium`}>
                   Não tem uma conta? <Text className="font-bold">Criar conta</Text>
                 </Text>
               </TouchableOpacity>
@@ -122,21 +124,21 @@ export default function LoginScreen() {
             {/* Social Login */}
             <View className="items-center">
               <View className="flex-row items-center mb-4">
-                <View className="flex-1 h-0.5 w-20 bg-gray-500"></View>
-                <Text className="text-gray-500 text-xs mx-4">Ou entre com</Text>
-                <View className="flex-1 h-0.5 w-20 bg-gray-500"></View>
+                <View className={`flex-1 h-0.5 w-20 ${isDark ? 'bg-dark-border' : 'bg-gray-500'}`}></View>
+                <Text className={`${isDark ? 'text-dark-muted' : 'text-gray-500'} text-xs mx-4`}>Ou entre com</Text>
+                <View className={`flex-1 h-0.5 w-20 ${isDark ? 'bg-dark-border' : 'bg-gray-500'}`}></View>
               </View>
               <View className="flex-row gap-3">
                 {/* Google Icon */}
-                <TouchableOpacity className="w-12 h-12 bg-gray-100 rounded-full items-center justify-center">
+                <TouchableOpacity className={`w-12 h-12 ${isDark ? 'bg-dark-surface' : 'bg-gray-100'} rounded-full items-center justify-center`}>
                   <Ionicons name="logo-google" size={18} color="#DB4437" />
                 </TouchableOpacity>
                 {/* Apple Icon */}
-                <TouchableOpacity className="w-12 h-12 bg-gray-100 rounded-full items-center justify-center">
-                  <Ionicons name="logo-apple" size={18} color="#000" />
+                <TouchableOpacity className={`w-12 h-12 ${isDark ? 'bg-dark-surface' : 'bg-gray-100'} rounded-full items-center justify-center`}>
+                  <Ionicons name="logo-apple" size={18} color={isDark ? '#fff' : '#000'} />
                 </TouchableOpacity>
                 {/* Facebook Icon */}
-                <TouchableOpacity className="w-12 h-12 bg-gray-100 rounded-full items-center justify-center">
+                <TouchableOpacity className={`w-12 h-12 ${isDark ? 'bg-dark-surface' : 'bg-gray-100'} rounded-full items-center justify-center`}>
                   <Ionicons name="logo-facebook" size={18} color="#1877F2" />
                 </TouchableOpacity>
               </View>

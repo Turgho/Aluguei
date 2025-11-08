@@ -7,8 +7,10 @@ import Input from '../components/shared/Input';
 import Button from '../components/shared/Button';
 import StatusBanner from '../components/shared/StatusBanner';
 import { apiService } from '../services/api';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function RegisterScreen() {
+  const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   const [form, setForm] = useState({
@@ -67,15 +69,15 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className={`flex-1 ${isDark ? 'bg-dark-bg' : 'bg-white'}`}>
       <ScrollView className="flex-1 px-8" showsVerticalScrollIndicator={false}>
         <View className="w-full max-w-md mx-auto py-8">
           {/* Welcome Text */}
           <View className="items-center mb-6">
-            <Text className="text-orange-800 text-2xl font-semibold text-center mb-1">
+            <Text className={`${isDark ? 'text-orange-400' : 'text-orange-800'} text-2xl font-semibold text-center mb-1`}>
               Criar Conta
             </Text>
-            <Text className="text-orange-600 text-center text-sm">
+            <Text className={`${isDark ? 'text-dark-muted' : 'text-orange-600'} text-center text-sm`}>
               Preencha seus dados para começar
             </Text>
           </View>
@@ -144,7 +146,7 @@ export default function RegisterScreen() {
           {/* Login Link */}
           <View className="items-center mt-6">
             <TouchableOpacity onPress={() => router.push('./login')}>
-              <Text className="text-orange-600 text-sm font-medium">
+              <Text className={`${isDark ? 'text-orange-400' : 'text-orange-600'} text-sm font-medium`}>
                 Já tem uma conta? <Text className="font-bold">Fazer login</Text>
               </Text>
             </TouchableOpacity>

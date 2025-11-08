@@ -2,13 +2,15 @@ import React from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function BottomNavBar() {
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
 
   return (
     <View 
-      className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200"
+      className={`absolute bottom-0 left-0 right-0 ${isDark ? 'bg-dark-bg border-dark-border' : 'bg-white border-gray-200'} border-t`}
       style={{ 
         paddingBottom: insets.bottom,
         shadowColor: '#000',
@@ -24,7 +26,7 @@ export default function BottomNavBar() {
           <View className="bg-orange-500 w-10 h-10 rounded-full items-center justify-center mb-1">
             <Ionicons name="add-circle" size={20} color="white" />
           </View>
-          <Text className="text-xs text-gray-600">Nova</Text>
+          <Text className={`text-xs ${isDark ? 'text-dark-text' : 'text-gray-600'}`}>Nova</Text>
         </TouchableOpacity>
 
         {/* Novo Contrato */}
@@ -32,7 +34,7 @@ export default function BottomNavBar() {
           <View className="bg-blue-500 w-10 h-10 rounded-full items-center justify-center mb-1">
             <Ionicons name="document-text" size={20} color="white" />
           </View>
-          <Text className="text-xs text-gray-600">Contrato</Text>
+          <Text className={`text-xs ${isDark ? 'text-dark-text' : 'text-gray-600'}`}>Contrato</Text>
         </TouchableOpacity>
 
         {/* Registrar Pagamento */}
@@ -40,7 +42,7 @@ export default function BottomNavBar() {
           <View className="bg-green-500 w-10 h-10 rounded-full items-center justify-center mb-1">
             <Ionicons name="cash" size={20} color="white" />
           </View>
-          <Text className="text-xs text-gray-600">Pagamento</Text>
+          <Text className={`text-xs ${isDark ? 'text-dark-text' : 'text-gray-600'}`}>Pagamento</Text>
         </TouchableOpacity>
 
         {/* Relatórios */}
@@ -48,7 +50,7 @@ export default function BottomNavBar() {
           <View className="bg-purple-500 w-10 h-10 rounded-full items-center justify-center mb-1">
             <Ionicons name="bar-chart" size={20} color="white" />
           </View>
-          <Text className="text-xs text-gray-600">Relatórios</Text>
+          <Text className={`text-xs ${isDark ? 'text-dark-text' : 'text-gray-600'}`}>Relatórios</Text>
         </TouchableOpacity>
       </View>
     </View>
