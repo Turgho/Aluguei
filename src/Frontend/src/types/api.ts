@@ -12,10 +12,30 @@ export interface LoginResponse {
     email: string;
     phone: string;
     cpf: string;
-    birth_date?: string;
+    birth_date?: string | null;
     created_at: string;
     updated_at: string;
   };
+}
+
+export interface CreateOwnerRequest {
+  name: string;
+  email: string;
+  password: string;
+  phone: string;
+  cpf: string;
+  birth_date?: string;
+}
+
+export interface Owner {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  cpf: string;
+  birth_date?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ApiError {

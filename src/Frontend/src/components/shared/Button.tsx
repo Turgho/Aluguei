@@ -2,12 +2,13 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-interface LoginButtonProps {
+interface ButtonProps {
   onPress: () => void;
   loading: boolean;
+  title: string;
 }
 
-export default function LoginButton({ onPress, loading }: LoginButtonProps) {
+export default function Button({ onPress, loading, title }: ButtonProps) {
   return (
     <TouchableOpacity
       className={`rounded-2xl py-5 mt-8 ${
@@ -29,7 +30,7 @@ export default function LoginButton({ onPress, loading }: LoginButtonProps) {
           </View>
         )}
         <Text className="text-white text-center font-bold text-xl">
-          {loading ? 'Entrando...' : 'Entrar'}
+          {loading ? 'Carregando...' : title}
         </Text>
       </View>
     </TouchableOpacity>

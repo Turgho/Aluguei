@@ -1,6 +1,6 @@
-import '../../styles/global.css'
+import '../styles/global.css';
 import { Redirect } from "expo-router";
 
 export default function Index() {
-  return <Redirect href="./login" />;
+  return <Redirect href="./welcome" />;
 }
