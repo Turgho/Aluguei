@@ -1,32 +1,125 @@
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
-# Binaries for programs and plugins
+# ========================
+# Go
+# ========================
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
 *.test
-
-# Code coverage profiles and other test artifacts
 *.out
-coverage.*
-*.coverprofile
-profile.cov
+*.prof
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Binários compilados
+bin/
+dist/
+build/
 
-# Go workspace file
+# Go modules cache
+vendor/
+
+# Go workspace
 go.work
 go.work.sum
 
-# env file
+# ========================
+# Ambiente
+# ========================
 .env
+.env.*
+!.env.example
 
-# Editor/IDE
-# .idea/
-# .vscode/
+# ========================
+# Banco de dados
+# ========================
+*.db
+*.sqlite
+*.sqlite3
+dump.sql
+*.dump
+
+# ========================
+# Docker
+# ========================
+docker-compose.override.yml
+
+# ========================
+# Logs
+# ========================
+*.log
+logs/
+
+# ========================
+# PDF / arquivos gerados
+# ========================
+*.pdf
+generated/
+uploads/
+tmp/
+
+# ========================
+# Certificados e chaves
+# ========================
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# ========================
+# Editores
+# ========================
+
+# VSCode
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# GoLand / JetBrains
+.idea/
+*.iml
+
+# Vim / Neovim
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*#
+.#*
+
+# ========================
+# Sistema operacional
+# ========================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ========================
+# Testes e cobertura
+# ========================
+coverage.out
+coverage.html
+*.coverprofile
+
+# ========================
+# Swagger / OpenAPI
+# ========================
+docs/swagger.json
+docs/swagger.yaml
+docs/docs.go
