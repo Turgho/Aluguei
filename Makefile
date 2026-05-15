@@ -108,20 +108,20 @@ migrate-create:
 # ========================
 .PHONY: docker-up
 docker-up:
-	@docker compose up -d
+	@docker compose --env-file backend/.env up -d
 
 .PHONY: docker-down
 docker-down:
-	@docker compose down
+	@docker compose --env-file backend/.env down
 
 .PHONY: docker-logs
 docker-logs:
-	@docker compose logs -f
+	@docker compose --env-file backend/.env logs -f
 
 .PHONY: docker-reset
 docker-reset:
-	@docker compose down -v
-	@docker compose up -d
+	@docker compose --env-file backend/.env down -v
+	@docker compose --env-file backend/.env up -d
 
 # ========================
 # Geral
