@@ -123,6 +123,37 @@ docker-reset:
 	@docker compose --env-file backend/.env down -v
 	@docker compose --env-file backend/.env up -d
 
+
+# ========================
+# Release
+# ========================
+.PHONY: release-patch
+release-patch:
+	@cd frontend && npm version patch --no-git-tag-version
+	@git add -A
+	@git commit -m "chore: bump version patch"
+	@git tag -a v$(shell cd frontend && node -p "require('./package.json').version") -m "release"
+	@echo "Tag criada: v$(shell cd frontend && node -p "require('./package.json').version")"
+	@echo "   Rode 'git push --follow-tags' para enviar ao repositório"
+
+.PHONY: release-minor
+release-minor:
+	@cd frontend && npm version minor --no-git-tag-version
+	@git add -A
+	@git commit -m "chore: bump version minor"
+	@git tag -a v$(shell cd frontend && node -p "require('./package.json').version") -m "release"
+	@echo "Tag criada: v$(shell cd frontend && node -p "require('./package.json').version")"
+	@echo "   Rode 'git push --follow-tags' para enviar ao repositório"
+
+.PHONY: release-major
+release-major:
+	@cd frontend && npm version major --no-git-tag-version
+	@git add -A
+	@git commit -m "chore: bump version major"
+	@git tag -a v$(shell cd frontend && node -p "require('./package.json').version") -m "release"
+	@echo "Tag criada: v$(shell cd frontend && node -p "require('./package.json').version")"
+	@echo "   Rode 'git push --follow-tags' para enviar ao repositório"
+
 # ========================
 # Geral
 # ========================
@@ -174,3 +205,6 @@ help:
 	@echo "  make swagger            Gera documentação OpenAPI"
 	@echo "  make setup              Roda o script de setup inicial"
 	@echo ""
+	@echo "  make release-patch      Bump patch (0.0.X) e cria tag git"
+	@echo "  make release-minor      Bump minor (0.X.0) e cria tag git"
+	@echo "  make release-major      Bump major (X.0.0) e cria tag git"
