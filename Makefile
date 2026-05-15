@@ -130,28 +130,31 @@ docker-reset:
 .PHONY: release-patch
 release-patch:
 	@cd frontend && npm version patch --no-git-tag-version
+	$(eval VERSION := v$(shell cd frontend && node -p "require('./package.json').version"))
 	@git add -A
 	@git commit -m "chore: bump version patch"
-	@git tag -a v$(shell cd frontend && node -p "require('./package.json').version") -m "release"
-	@echo "Tag criada: v$(shell cd frontend && node -p "require('./package.json').version")"
+	@git tag -a $(VERSION) -m "release"
+	@echo "✅ Tag criada: $(VERSION)"
 	@echo "   Rode 'git push --follow-tags' para enviar ao repositório"
 
 .PHONY: release-minor
 release-minor:
 	@cd frontend && npm version minor --no-git-tag-version
+	$(eval VERSION := v$(shell cd frontend && node -p "require('./package.json').version"))
 	@git add -A
 	@git commit -m "chore: bump version minor"
-	@git tag -a v$(shell cd frontend && node -p "require('./package.json').version") -m "release"
-	@echo "Tag criada: v$(shell cd frontend && node -p "require('./package.json').version")"
+	@git tag -a $(VERSION) -m "release"
+	@echo "✅ Tag criada: $(VERSION)"
 	@echo "   Rode 'git push --follow-tags' para enviar ao repositório"
 
 .PHONY: release-major
 release-major:
 	@cd frontend && npm version major --no-git-tag-version
+	$(eval VERSION := v$(shell cd frontend && node -p "require('./package.json').version"))
 	@git add -A
 	@git commit -m "chore: bump version major"
-	@git tag -a v$(shell cd frontend && node -p "require('./package.json').version") -m "release"
-	@echo "Tag criada: v$(shell cd frontend && node -p "require('./package.json').version")"
+	@git tag -a $(VERSION) -m "release"
+	@echo "✅ Tag criada: $(VERSION)"
 	@echo "   Rode 'git push --follow-tags' para enviar ao repositório"
 
 # ========================
