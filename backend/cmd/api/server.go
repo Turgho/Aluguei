@@ -1,44 +1,73 @@
+// Package main é o ponto de entrada da aplicação Aluguei.
+// Responsável por inicializar dependências e subir o servidor HTTP.
 package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 
+	// "github.com/Turgho/Aluguei/internal/delivery/http/handlers"
+	"github.com/Turgho/Aluguei/internal/delivery/http/middleware"
+	// "github.com/Turgho/Aluguei/internal/domain/usecases"
 	"github.com/Turgho/Aluguei/internal/infra/database"
+	// "github.com/Turgho/Aluguei/internal/infra/repositories"
 	"github.com/Turgho/Aluguei/pkg/logger"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
+// Server representa a instância principal do servidor HTTP.
+// Encapsula o roteador Gin e a conexão com o banco de dados.
 type Server struct {
 	router *gin.Engine
 	db     *gorm.DB
 }
 
-// NewServer inicializa as dependências e retorna uma instância do servidor
+// NewServer inicializa todas as dependências da aplicação e retorna
+// uma instância configurada de [Server].
+//
+// A inicialização segue a ordem:
+//  1. Carrega variáveis de ambiente via .env
+//  2. Inicializa o logger (zap)
+//  3. Configura o modo do Gin (debug/release)
+//  4. Conecta ao banco de dados
+//  5. Configura o roteador e os middlewares
+//  6. Registra as rotas
+//
+// Encerra a aplicação com log.Fatal em caso de erro crítico
+// (arquivo .env ausente ou falha na conexão com o banco).
 func NewServer() *Server {
-	err := godotenv.Load()
-	if err != nil {
+	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
 	logger.Init(os.Getenv("APP_ENV"))
+
 	if os.Getenv("APP_ENV") == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Database
 	db, err := database.NewDB(os.Getenv("DATABASE_URL"))
 	if err != nil {
 		logger.Log.Fatal("falha ao conectar no banco")
 	}
 
-	// New() ao invés de Default() para melhor controle de logs via zap
-	// Usando apenas Recovery() por segurança
 	router := gin.New()
+	router.SetTrustedProxies(nil)
 	router.Use(gin.Recovery())
+	router.Use(middleware.ZapLogger(logger.Log))
+
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{os.Getenv("FRONTEND_URL")},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
 
 	server := &Server{router: router, db: db}
 	server.setupRoutes()
@@ -46,19 +75,49 @@ func NewServer() *Server {
 	return server
 }
 
-// Run inicia o servidor HTTP na porta configurada.
+// Run inicia o servidor HTTP na porta definida pela variável de ambiente APP_PORT.
+// Caso APP_PORT não esteja definida, utiliza a porta padrão 3000.
 func (s *Server) Run() {
 	defer logger.Log.Sync()
 
-	// Servidor
 	port := os.Getenv("APP_PORT")
 	if port == "" {
 		port = "3000"
 	}
+
 	logger.Log.Info("servidor rodando", zap.String("port", port))
 	s.router.Run(":" + port)
 }
 
+// setupRoutes registra todas as rotas da aplicação, organizadas em dois grupos:
+//
+//   - Rotas públicas (/api/v1): acessíveis sem autenticação (login, registro)
+//   - Rotas privadas (/api/v1): protegidas pelo middleware [middleware.Auth]
 func (s *Server) setupRoutes() {
+	// Wire de dependências
+	// userRepo := repositories.NewUserRepository(s.db)
+	// userUC := usecases.NewUserUseCase(userRepo)
+	// userH := handlers.NewUserHandler(userUC)
 
+	s.router.GET("/", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{
+			"message": "rodando API",
+		})
+	})
+
+	// Rotas públicas — sem autenticação
+	// public := s.router.Group("/api/v1")
+	// {
+	// 	public.POST("/login", userH.Login)
+	// 	public.POST("/register", userH.Register)
+	// }
+
+	// // Rotas privadas — requerem JWT válido
+	// private := s.router.Group("/api/v1")
+	// private.Use(middleware.Auth())
+	// {
+	// 	private.GET("/users/:id", userH.GetByID)
+	// 	private.PUT("/users/:id", userH.Update)
+	// 	private.DELETE("/users/:id", userH.Delete)
+	// }
 }
