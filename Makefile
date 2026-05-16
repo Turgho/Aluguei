@@ -10,7 +10,7 @@ APP_NAME       = rental
 CMD_PATH       = ./cmd/api
 BIN_PATH       = ./bin/$(APP_NAME)
 MIGRATION_PATH = ./migrations
-DATABASE_URL  ?= $(shell grep DATABASE_URL backend/.env | cut -d '=' -f2)
+DATABASE_URL ?= $(shell grep '^DATABASE_URL=' backend/.env | cut -d '=' -f2-)
 
 LDFLAGS := -ldflags "\
   -X '$(MODULE)/internal/infra/version.Version=$(VERSION)' \
