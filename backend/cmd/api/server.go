@@ -4,18 +4,20 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"os"
 
-	// "github.com/Turgho/Aluguei/internal/delivery/http/handlers"
+	_ "github.com/Turgho/Aluguei/docs"
+	"github.com/Turgho/Aluguei/internal/delivery/http/handlers"
 	"github.com/Turgho/Aluguei/internal/delivery/http/middleware"
-	// "github.com/Turgho/Aluguei/internal/domain/usecases"
 	"github.com/Turgho/Aluguei/internal/infra/database"
-	// "github.com/Turgho/Aluguei/internal/infra/repositories"
+	"github.com/Turgho/Aluguei/internal/infra/repositories"
+	userUseCase "github.com/Turgho/Aluguei/internal/usecase"
 	"github.com/Turgho/Aluguei/pkg/logger"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -94,30 +96,26 @@ func (s *Server) Run() {
 //   - Rotas públicas (/api/v1): acessíveis sem autenticação (login, registro)
 //   - Rotas privadas (/api/v1): protegidas pelo middleware [middleware.Auth]
 func (s *Server) setupRoutes() {
-	// Wire de dependências
-	// userRepo := repositories.NewUserRepository(s.db)
-	// userUC := usecases.NewUserUseCase(userRepo)
-	// userH := handlers.NewUserHandler(userUC)
+	// Users
+	userRepo := repositories.NewUserRepository(s.db)
+	userUC := userUseCase.NewUserUseCase(userRepo)
+	userH := handlers.NewUserHandler(userUC)
 
-	s.router.GET("/", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{
-			"message": "rodando API",
-		})
-	})
+	// Swagger Docs
+	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Rotas públicas — sem autenticação
-	// public := s.router.Group("/api/v1")
-	// {
-	// 	public.POST("/login", userH.Login)
-	// 	public.POST("/register", userH.Register)
-	// }
+	public := s.router.Group("/api/v1")
+	{
+		public.POST("/login", userH.Login)
+		public.POST("/register", userH.Register)
+	}
 
-	// // Rotas privadas — requerem JWT válido
-	// private := s.router.Group("/api/v1")
-	// private.Use(middleware.Auth())
-	// {
-	// 	private.GET("/users/:id", userH.GetByID)
-	// 	private.PUT("/users/:id", userH.Update)
-	// 	private.DELETE("/users/:id", userH.Delete)
-	// }
+	private := s.router.Group("/api/v1")
+	private.Use(middleware.Auth())
+	{
+		private.GET("/users/search", userH.Search)
+		private.GET("/users/:id", userH.GetByID)
+		private.PUT("/users/:id", userH.Update)
+		private.DELETE("/users/:id", userH.Delete)
+	}
 }
