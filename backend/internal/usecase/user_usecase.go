@@ -130,33 +130,57 @@ func (uc *userUseCase) Search(query string) ([]*entities.User, error) {
 	return users, nil
 }
 
-// Login autentica um usuário e retorna um token JWT.
-func (uc *userUseCase) Login(email, password string) (string, error) {
+// Login autentica um usuário e retorna os tokens JWT.
+func (uc *userUseCase) Login(email, password string) (string, string, error) {
 	user, err := uc.repo.GetByEmail(email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", fmt.Errorf("credenciais inválidas")
+			return "", "", fmt.Errorf("credenciais inválidas")
 		}
-		return "", fmt.Errorf("erro ao buscar usuário: %w", err)
+
+		return "", "", fmt.Errorf("erro ao buscar usuário: %w", err)
 	}
 
 	match, err := hash.VerifyPassword(password, user.PasswordHash)
 	if err != nil {
-		return "", fmt.Errorf("erro ao verificar senha: %w", err)
+		return "", "", fmt.Errorf("erro ao verificar senha: %w", err)
 	}
 
 	if !match {
-		return "", fmt.Errorf("credenciais inválidas")
+		return "", "", fmt.Errorf("credenciais inválidas")
 	}
 
-	token, err := jwt.GenerateToken(
+	accessToken, err := jwt.GenerateAccessToken(
 		user.ID.String(),
 		user.Email,
 		string(user.Role),
 	)
 	if err != nil {
-		return "", fmt.Errorf("erro ao gerar token: %w", err)
+		return "", "", fmt.Errorf("erro ao gerar access token: %w", err)
 	}
 
-	return token, nil
+	refreshToken, err := jwt.GenerateRefreshToken(
+		user.ID.String(),
+	)
+	if err != nil {
+		return "", "", fmt.Errorf("erro ao gerar refresh token: %w", err)
+	}
+
+	return accessToken, refreshToken, nil
+}
+
+// RefreshToken valida o refresh token e retorna um novo access token.
+func (uc *userUseCase) RefreshToken(refreshToken string) (string, error) {
+	claims, err := jwt.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		return "", fmt.Errorf("refresh token inválido: %w", err)
+	}
+
+	// Se precisar de email e role no access token, busca o usuário
+	user, err := uc.repo.GetByID(claims.UserID)
+	if err != nil {
+		return "", fmt.Errorf("usuário não encontrado: %w", err)
+	}
+
+	return jwt.GenerateAccessToken(user.ID.String(), user.Email, string(user.Role))
 }
