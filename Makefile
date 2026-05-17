@@ -31,7 +31,7 @@ dev-backend:
 
 .PHONY: dev-frontend
 dev-frontend:
-	@cd frontend && ng serve
+	@cd frontend && ng serve --host 0.0.0.0
 
 # ========================
 # Backend
