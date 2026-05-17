@@ -1,15 +1,33 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Frontend</title>
-    <base href="/" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
-    <link rel="manifest" href="manifest.webmanifest" />
-  </head>
-  <body>
-    <app-root></app-root>
-    <noscript>Please enable JavaScript to continue using this application.</noscript>
-  </body>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>MeuApp</title>
+  <base href="/">
+
+  <!-- ── Mobile-first essentials ── -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- ── PWA / iOS ── -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="MeuApp">
+  <link rel="apple-touch-icon" href="icons/icon-152x152.png">
+
+  <!-- ── Theme color (barra do browser no Android) ── -->
+  <meta name="theme-color" content="#4f46e5">
+
+  <!-- ── Manifest PWA ── -->
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- ── SEO básico ── -->
+  <meta name="description" content="Descrição do seu aplicativo">
+
+  <!-- ── Favicon ── -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+<body>
+  <app-root></app-root>
+</body>
 </html>
