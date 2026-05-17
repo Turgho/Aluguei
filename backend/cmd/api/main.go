@@ -4,7 +4,7 @@ package main
 // @title           Aluguei API
 // @version         0.3.1
 // @description     API do sistema Aluguei.
-// @securityDefinitions.apikey BearerAuth
+// @securityDefinitions.apikey CookieAuth
 // @in header
 // @name Authorization
 func main() {

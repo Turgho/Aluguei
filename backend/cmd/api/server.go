@@ -5,6 +5,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	_ "github.com/Turgho/Aluguei/docs"
 	"github.com/Turgho/Aluguei/internal/delivery/http/handlers"
@@ -64,11 +65,18 @@ func NewServer() *Server {
 	router.Use(middleware.ZapLogger(logger.Log))
 
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{os.Getenv("FRONTEND_URL")},
+		AllowOrigins: []string{
+			// APENAS PARA DEV
+			"http://localhost:4200",
+			"http://127.0.0.1:4200",
+			"http://192.168.1.7:4200", // PC
+			"http://192.168.1.6:4200", // CELULAR
+		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
 	}))
 
 	server := &Server{router: router, db: db}
@@ -88,7 +96,7 @@ func (s *Server) Run() {
 	}
 
 	logger.Log.Info("servidor rodando", zap.String("port", port))
-	s.router.Run(":" + port)
+	s.router.Run("0.0.0.0:" + port)
 }
 
 // setupRoutes registra todas as rotas da aplicação, organizadas em dois grupos:
@@ -100,14 +108,18 @@ func (s *Server) setupRoutes() {
 	userRepo := repositories.NewUserRepository(s.db)
 	userUC := userUseCase.NewUserUseCase(userRepo)
 	userH := handlers.NewUserHandler(userUC)
+	authH := handlers.NewAuthHandler(userUC)
 
 	// Swagger Docs
 	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	public := s.router.Group("/api/v1")
+	// routes.go ou main.go
+	auth := s.router.Group("/api/v1/auth")
 	{
-		public.POST("/login", userH.Login)
-		public.POST("/register", userH.Register)
+		auth.POST("/login", authH.Login)
+		auth.POST("/logout", authH.Logout)
+		auth.POST("/refresh", authH.RefreshToken)
+		auth.GET("/me", middleware.Auth(), authH.Me)
 	}
 
 	private := s.router.Group("/api/v1")

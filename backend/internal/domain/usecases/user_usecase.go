@@ -1,7 +1,9 @@
 // internal/domain/usecases/user/user_usecase.go
 package usecases
 
-import "github.com/Turgho/Aluguei/internal/domain/entities"
+import (
+	"github.com/Turgho/Aluguei/internal/domain/entities"
+)
 
 // UserUseCase define o contrato das regras de negócio de [entities.User].
 type UserUseCase interface {
@@ -11,5 +13,6 @@ type UserUseCase interface {
 	Update(user *entities.User) error
 	Delete(id string) error
 	Search(query string) ([]*entities.User, error)
-	Login(email, password string) (string, error)
+	Login(email, password string) (string, string, error)
+	RefreshToken(refreshToken string) (string, error)
 }
