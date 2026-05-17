@@ -19,44 +19,56 @@ import (
 //   - UserID: identificador único do usuário
 //   - Email: endereço de e-mail do usuário
 //   - Role: papel/permissão do usuário (ex: "admin", "user")
+//   - Type: tipo do token ("access" ou "refresh")
 type Claims struct {
 	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-	Role   string `json:"role"`
+	Email  string `json:"email,omitempty"`
+	Role   string `json:"role,omitempty"`
+	Type   string `json:"type"`
+
 	jwt.RegisteredClaims
 }
 
 // getSecretKey retorna a chave JWT carregada da variável de ambiente.
-func getSecretKey() ([]byte, error) {
-	secret := os.Getenv("JWT_SECRET")
+func getSecretKey(env string) ([]byte, error) {
+	secret := os.Getenv(env)
 
 	if secret == "" {
-		return nil, fmt.Errorf("JWT_SECRET não configurado")
+		return nil, fmt.Errorf("%s não configurado", env)
+	}
+
+	if len(secret) < 32 {
+		return nil, fmt.Errorf("%s deve ter no mínimo 32 caracteres", env)
 	}
 
 	return []byte(secret), nil
 }
 
-// GenerateToken gera um token JWT assinado com HS256 contendo as informações
-// do usuário autenticado.
+// GenerateAccessToken gera um access token JWT com duração curta.
 //
-// O token gerado expira em 24 horas a partir do momento da criação.
+// O token contém:
+//   - user_id
+//   - email
+//   - role
 //
-// Retorna o token assinado como string ou um erro caso a assinatura falhe.
-func GenerateToken(userID string, email, role string) (string, error) {
-	secretKey, err := getSecretKey()
+// O token expira em 15 minutos.
+func GenerateAccessToken(userID string, email, role string) (string, error) {
+	secretKey, err := getSecretKey("JWT_ACCESS_SECRET")
 	if err != nil {
 		return "", err
 	}
+
+	now := time.Now()
 
 	claims := Claims{
 		UserID: userID,
 		Email:  email,
 		Role:   role,
+		Type:   "access",
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(now.Add(15 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
 			Issuer:    "aluguei-api",
 		},
 	}
@@ -65,26 +77,61 @@ func GenerateToken(userID string, email, role string) (string, error) {
 
 	signed, err := token.SignedString(secretKey)
 	if err != nil {
-		return "", fmt.Errorf("erro ao assinar token: %w", err)
+		return "", fmt.Errorf("erro ao assinar access token: %w", err)
 	}
 
 	return signed, nil
 }
 
-// ValidateToken valida um token JWT e retorna as [Claims] contidas nele.
+// GenerateRefreshToken gera um refresh token JWT.
 //
-// A validação garante que:
-//   - O token foi assinado com o algoritmo HS256 esperado
-//   - A assinatura é válida e corresponde à chave secreta
-//   - O token não está expirado
+// O refresh token contém apenas:
+//   - user_id
+//   - type
 //
-// Retorna erro nos seguintes casos:
-//   - Token malformado ou vazio
-//   - Algoritmo de assinatura diferente de HS256
-//   - Assinatura inválida
-//   - Token expirado
-func ValidateToken(tokenStr string) (*Claims, error) {
-	secretKey, err := getSecretKey()
+// O token expira em 7 dias.
+func GenerateRefreshToken(userID string) (string, error) {
+	secretKey, err := getSecretKey("JWT_REFRESH_SECRET")
+	if err != nil {
+		return "", err
+	}
+
+	now := time.Now()
+
+	claims := Claims{
+		UserID: userID,
+		Type:   "refresh",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(now.Add(7 * 24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
+			Issuer:    "aluguei-api",
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	signed, err := token.SignedString(secretKey)
+	if err != nil {
+		return "", fmt.Errorf("erro ao assinar refresh token: %w", err)
+	}
+
+	return signed, nil
+}
+
+// ValidateAccessToken valida um access token JWT.
+func ValidateAccessToken(tokenStr string) (*Claims, error) {
+	return validateToken(tokenStr, "JWT_ACCESS_SECRET", "access")
+}
+
+// ValidateRefreshToken valida um refresh token JWT.
+func ValidateRefreshToken(tokenStr string) (*Claims, error) {
+	return validateToken(tokenStr, "JWT_REFRESH_SECRET", "refresh")
+}
+
+// validateToken valida assinatura, expiração e tipo do token.
+func validateToken(tokenStr, envSecret, expectedType string) (*Claims, error) {
+	secretKey, err := getSecretKey(envSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -93,8 +140,7 @@ func ValidateToken(tokenStr string) (*Claims, error) {
 		tokenStr,
 		&Claims{},
 		func(t *jwt.Token) (interface{}, error) {
-			// Rejeita qualquer algoritmo diferente de HS256
-			if t.Method != jwt.SigningMethodHS256 {
+			if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 				return nil, fmt.Errorf("algoritmo inesperado: %v", t.Header["alg"])
 			}
 
@@ -109,6 +155,10 @@ func ValidateToken(tokenStr string) (*Claims, error) {
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
 		return nil, fmt.Errorf("token inválido")
+	}
+
+	if claims.Type != expectedType {
+		return nil, fmt.Errorf("tipo de token inválido")
 	}
 
 	return claims, nil
