@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// UserHandler agrupa os handlers HTTP relacionados a [models.User].
+// UserHandler agrupa os handlers HTTP relacionados a [entities.User].
 type UserHandler struct {
 	uc usecases.UserUseCase
 }
@@ -20,7 +20,9 @@ func NewUserHandler(uc usecases.UserUseCase) *UserHandler {
 	return &UserHandler{uc: uc}
 }
 
-// userResponse representa o corpo da resposta do user.
+// ── Request / Response ─────────────────────────────────────────────────────
+
+// userResponse representa o corpo da resposta do usuário.
 type userResponse struct {
 	ID        string        `json:"id"`
 	FirstName string        `json:"first_name"`
@@ -31,34 +33,14 @@ type userResponse struct {
 	Role      entities.Role `json:"role"`
 }
 
-// registerRequest representa o corpo da requisição de registro.
-type registerRequest struct {
-	FirstName string        `json:"first_name" binding:"required"`
-	LastName  string        `json:"last_name" binding:"required"`
-	CPF       string        `json:"cpf" binding:"required"`
-	Email     string        `json:"email" binding:"required,email"`
-	Phone     string        `json:"phone"`
-	Password  string        `json:"password" binding:"required,min=8"`
-	Role      entities.Role `json:"role" binding:"required"`
-}
-
-// loginResponse representa a resposta do login.
-type loginResponse struct {
-	Token string `json:"token"`
-}
-
-// loginRequest representa o corpo da requisição de login.
-type loginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-}
-
 // updateRequest representa o corpo da requisição de atualização.
 type updateRequest struct {
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Phone     string `json:"phone"`
 }
+
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 func toUserResponse(user *entities.User) userResponse {
 	return userResponse{
@@ -80,66 +62,14 @@ func toUserResponses(users []*entities.User) []userResponse {
 	return res
 }
 
-// Register godoc
-//
-//	@Summary		Registra um novo usuário
-//	@Tags			users
-//	@Accept			json
-//	@Produce		json
-//	@Param			body	body		registerRequest	true	"Dados do usuário"
-//	@Success		201		{object}	userResponse
-//	@Failure		400		{object}	response.ErrorResponse
-//	@Failure		409		{object}	response.ErrorResponse
-//	@Router			/api/v1/register [post]
-func (h *UserHandler) Register(c *gin.Context) {
-	var req registerRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
-		return
-	}
-
-	user, err := h.uc.Create(req.FirstName, req.LastName, req.CPF, req.Email, req.Phone, req.Password, req.Role)
-	if err != nil {
-		response.Error(c, http.StatusConflict, "CONFLICT", err.Error())
-		return
-	}
-
-	c.JSON(http.StatusCreated, toUserResponse(user))
-}
-
-// Login godoc
-//
-//	@Summary		Autentica um usuário e retorna um token JWT
-//	@Tags			users
-//	@Accept			json
-//	@Produce		json
-//	@Param			body	body		loginRequest	true	"Credenciais"
-//	@Success		200		{object}	loginResponse
-//	@Failure		400		{object}	response.ErrorResponse
-//	@Failure		401		{object}	response.ErrorResponse
-//	@Router			/api/v1/login [post]
-func (h *UserHandler) Login(c *gin.Context) {
-	var req loginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
-		return
-	}
-
-	token, err := h.uc.Login(req.Email, req.Password)
-	if err != nil {
-		response.Error(c, http.StatusUnauthorized, "INVALID_CREDENTIALS", "credenciais inválidas")
-		return
-	}
-
-	c.JSON(http.StatusOK, loginResponse{Token: token})
-}
+// ── Handlers ───────────────────────────────────────────────────────────────
 
 // GetByID godoc
 //
 //	@Summary		Busca um usuário pelo ID
 //	@Tags			users
 //	@Produce		json
-//	@Security		BearerAuth
+//	@Security		CookieAuth
 //	@Param			id	path		string	true	"ID do usuário"
 //	@Success		200	{object}	userResponse
 //	@Failure		404	{object}	response.ErrorResponse
@@ -162,7 +92,7 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
-//	@Security		BearerAuth
+//	@Security		CookieAuth
 //	@Param			id		path		string			true	"ID do usuário"
 //	@Param			body	body		updateRequest	true	"Dados a atualizar"
 //	@Success		200		{object}	userResponse
@@ -207,10 +137,10 @@ func (h *UserHandler) Update(c *gin.Context) {
 //	@Summary		Remove um usuário pelo ID
 //	@Tags			users
 //	@Produce		json
-//	@Security		BearerAuth
+//	@Security		CookieAuth
 //	@Param			id	path		string	true	"ID do usuário"
 //	@Success		204
-//	@Failure		404		{object}	response.ErrorResponse
+//	@Failure		404	{object}	response.ErrorResponse
 //	@Router			/api/v1/users/{id} [delete]
 func (h *UserHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
@@ -228,9 +158,9 @@ func (h *UserHandler) Delete(c *gin.Context) {
 //	@Summary		Busca usuários por nome, email ou CPF
 //	@Tags			users
 //	@Produce		json
-//	@Security		BearerAuth
+//	@Security		CookieAuth
 //	@Param			q	query		string	true	"Termo de busca"
-//	@Success		200	{array}	userResponse
+//	@Success		200	{array}		userResponse
 //	@Failure		400	{object}	response.ErrorResponse
 //	@Router			/api/v1/users/search [get]
 func (h *UserHandler) Search(c *gin.Context) {
