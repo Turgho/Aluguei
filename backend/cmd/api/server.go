@@ -113,12 +113,12 @@ func (s *Server) setupRoutes() {
 	// Swagger Docs
 	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// routes.go ou main.go
 	auth := s.router.Group("/api/v1/auth")
 	{
 		auth.POST("/login", authH.Login)
 		auth.POST("/logout", authH.Logout)
 		auth.POST("/refresh", authH.RefreshToken)
+		auth.POST("/register", authH.Register)
 		auth.GET("/me", middleware.Auth(), authH.Me)
 	}
 
