@@ -11,7 +11,48 @@
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
-          "style": "scss"
+          "style": "scss",
+          "type": "component",
+          "standalone": true,
+          "flat": true
+        },
+        "@schematics/angular:service": {
+          "type": "service",
+          "flat": true
+        },
+        "@schematics/angular:directive": {
+          "type": "directive",
+          "standalone": true,
+          "flat": true
+        },
+        "@schematics/angular:guard": {
+          "typeSeparator": ".",
+          "functional": true,
+          "flat": true
+        },
+        "@schematics/angular:interceptor": {
+          "typeSeparator": ".",
+          "functional": true,
+          "flat": true
+        },
+        "@schematics/angular:resolver": {
+          "typeSeparator": ".",
+          "functional": true,
+          "flat": true
+        },
+        "@schematics/angular:pipe": {
+          "typeSeparator": ".",
+          "standalone": true,
+          "flat": true
+        },
+        "@schematics/angular:interface": {
+          "type": "interface"
+        },
+        "@schematics/angular:enum": {
+          "type": "enum"
+        },
+        "@schematics/angular:class": {
+          "type": "class"
         }
       },
       "root": "",
@@ -34,6 +75,12 @@
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.production.ts"
+                }
+              ],
               "budgets": [
                 {
                   "type": "initial",
