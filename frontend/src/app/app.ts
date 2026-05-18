@@ -1,12 +1,14 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { LoadingComponent } from './core/loading/loading.component';
+import { ThemeService } from './core/theme/theme.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, LoadingComponent],
   templateUrl: './app.html',
-  styleUrl: './app.scss'
 })
 export class App {
-  protected readonly title = signal('frontend');
+  // Garante que o tema do localStorage seja aplicado em todas as rotas (ex.: login)
+  private readonly _theme = inject(ThemeService);
 }

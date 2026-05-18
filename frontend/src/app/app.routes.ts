@@ -1,6 +1,5 @@
-// src/app/app.routes.ts
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard } from './core/guards/auth';
+import { authGuard, guestGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -8,21 +7,29 @@ export const routes: Routes = [
     redirectTo: 'login',
     pathMatch: 'full',
   },
-
-  // Rotas públicas (bloqueadas se já estiver logado)
   {
     path: 'login',
     canActivate: [guestGuard],
     loadComponent: () =>
-      import('./features/auth/login/login').then(m => m.LoginComponent),
+      import('./features/auth/login/login.component').then(m => m.LoginComponent),
+  },
+  {
+    path: 'registro',
+    canActivate: [guestGuard],
+    loadComponent: () =>
+      import('./features/auth/register/register.component').then(m => m.RegisterComponent),
   },
   {
     path: 'dashboard',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./features/dashboard/dashboard/dashboard').then(m => m.DashboardComponent),
+      import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
   },
-  // Fallback
+  {
+    path: 'forbidden',
+    loadComponent: () =>
+      import('./features/auth/forbidden/forbidden.component').then(m => m.ForbiddenComponent),
+  },
   {
     path: '**',
     redirectTo: 'login',
