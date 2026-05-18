@@ -1,0 +1,14 @@
+@if (loading.isLoading()) {
+  <div
+    class="fixed inset-0 z-[9999] flex items-center justify-center
+           bg-black/40 backdrop-blur-sm animate-fade-in"
+    role="status"
+    aria-live="polite"
+    aria-label="Carregando"
+  >
+    <div
+      class="h-12 w-12 rounded-full border-4 border-transparent
+             border-t-brand-500 animate-spin"
+    ></div>
+  </div>
+}
