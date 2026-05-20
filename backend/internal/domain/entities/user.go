@@ -6,8 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Turgho/Aluguei/pkg/validators"
+	userValidators "github.com/Turgho/Aluguei/pkg/validators/user"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // Role representa o papel de um usuário no sistema.
@@ -23,16 +24,27 @@ const (
 
 // User representa um usuário do sistema.
 type User struct {
-	ID           uuid.UUID `gorm:"type:uuid;primaryKey;default:uuidv7()"`
-	FirstName    string    `gorm:"type:varchar(100);not null"`
-	LastName     string    `gorm:"type:varchar(100);not null"`
-	CPF          string    `gorm:"type:varchar(14);uniqueIndex;not null"`
-	Email        string    `gorm:"type:varchar(255);uniqueIndex;not null"`
-	Phone        string    `gorm:"type:varchar(20)"`
-	PasswordHash string    `json:"-" gorm:"type:varchar(255);not null"`
-	Role         Role      `gorm:"type:varchar(50);not null;default:tenant"`
-	CreatedAt    time.Time `gorm:"autoCreateTime"`
-	UpdatedAt    time.Time `gorm:"autoUpdateTime"`
+	ID uuid.UUID `gorm:"type:uuid;primaryKey;default:uuidv7()"`
+
+	FirstName string `gorm:"type:varchar(100);not null"`
+	LastName  string `gorm:"type:varchar(100);not null"`
+
+	CPF   string `gorm:"type:varchar(11);uniqueIndex;not null"`
+	Email string `gorm:"type:varchar(255);uniqueIndex;not null;index"`
+	Phone string `gorm:"type:varchar(15)"`
+
+	PasswordHash string `json:"-" gorm:"type:varchar(255);not null"`
+
+	Role Role `gorm:"type:varchar(50);not null;default:owner;index"`
+
+	// Controle da conta
+	IsActive      bool       `gorm:"not null;default:true"`
+	EmailVerified bool       `gorm:"not null;default:false"`
+	LastLoginAt   *time.Time `gorm:"default:null"`
+
+	CreatedAt time.Time      `gorm:"autoCreateTime"`
+	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
 // NewUser cria e valida uma nova instância de [User].
@@ -42,11 +54,23 @@ type User struct {
 func NewUser(firstName, lastName, cpf, email, phone, passwordHash string, role Role) (*User, error) {
 	var errs []string
 
-	// Validações
+	// Normalização
+	firstName = strings.TrimSpace(firstName)
+	lastName = strings.TrimSpace(lastName)
+
+	cpf = userValidators.NormalizeCPF(cpf)
+
+	email = strings.TrimSpace(strings.ToLower(email))
+
+	phone = userValidators.NormalizePhone(phone)
+
+	passwordHash = strings.TrimSpace(passwordHash)
+
 	// ————— Nome —————
 	if firstName == "" {
 		errs = append(errs, "nome é obrigatório")
 	}
+
 	if lastName == "" {
 		errs = append(errs, "sobrenome é obrigatório")
 	}
@@ -54,33 +78,33 @@ func NewUser(firstName, lastName, cpf, email, phone, passwordHash string, role R
 	// ————— CPF —————
 	if cpf == "" {
 		errs = append(errs, "CPF é obrigatório")
-	} else if !validators.ValidateCPF(cpf) {
+	} else if !userValidators.ValidateCPF(cpf) {
 		errs = append(errs, "CPF inválido")
 	}
-	cpf = validators.NormalizeCPF(cpf)
 
 	// ————— Email —————
 	if email == "" {
 		errs = append(errs, "email é obrigatório")
-	} else if !validators.ValidateEmail(email) {
+	} else if !userValidators.ValidateEmail(email) {
 		errs = append(errs, "email inválido")
 	}
 
 	// ————— Telefone —————
-	if !validators.ValidatePhone(phone) {
+	if phone != "" && !userValidators.ValidatePhone(phone) {
 		errs = append(errs, "telefone inválido")
 	}
-	phone = validators.NormalizePhone(phone)
 
 	// ————— Senha —————
 	if passwordHash == "" {
 		errs = append(errs, "senha é obrigatória")
 	}
-	if role != RoleOwner && role != RoleTenant {
+
+	// ————— Role —————
+	if !userValidators.ValidateRole(string(role)) {
 		errs = append(errs, "role inválida")
 	}
 
-	// Erros
+	// ————— Erros —————
 	if len(errs) > 0 {
 		return nil, errors.New(strings.Join(errs, "; "))
 	}
@@ -88,14 +112,16 @@ func NewUser(firstName, lastName, cpf, email, phone, passwordHash string, role R
 	now := time.Now().UTC()
 
 	return &User{
-		FirstName:    firstName,
-		LastName:     lastName,
-		CPF:          cpf,
-		Email:        email,
-		Phone:        phone,
-		PasswordHash: passwordHash,
-		Role:         role,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		FirstName:     firstName,
+		LastName:      lastName,
+		CPF:           cpf,
+		Email:         email,
+		Phone:         phone,
+		PasswordHash:  passwordHash,
+		Role:          role,
+		IsActive:      true,
+		EmailVerified: false,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}, nil
 }
