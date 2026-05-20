@@ -4,29 +4,33 @@ package usecase
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Turgho/Aluguei/internal/domain/entities"
-	"github.com/Turgho/Aluguei/internal/domain/repositories"
+	domain "github.com/Turgho/Aluguei/internal/domain/repositories"
 	"github.com/Turgho/Aluguei/internal/domain/usecases"
 	"github.com/Turgho/Aluguei/pkg/hash"
-	"github.com/Turgho/Aluguei/pkg/jwt"
-	"github.com/Turgho/Aluguei/pkg/validators"
+	"github.com/Turgho/Aluguei/pkg/pagination"
+	userValidators "github.com/Turgho/Aluguei/pkg/validators/user"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type userUseCase struct {
-	repo repositories.UserRepository
+	repo domain.UserRepository
 }
 
 // NewUserUseCase retorna uma implementação de [usecases.UserUseCase].
-func NewUserUseCase(repo repositories.UserRepository) usecases.UserUseCase {
+func NewUserUseCase(repo domain.UserRepository) usecases.UserUseCase {
 	return &userUseCase{repo: repo}
 }
+
+// ── Escrita ──────────────────────────────────────────────────────────────────
 
 // Create valida, hasheia a senha e persiste um novo usuário.
 func (uc *userUseCase) Create(firstName, lastName, cpf, email, phone, password string, role entities.Role) (*entities.User, error) {
 	// Verifica força da senha antes do hash
-	if !validators.ValidatePassword(password) {
+	if !userValidators.ValidatePassword(password) {
 		return nil, fmt.Errorf("senha fraca")
 	}
 
@@ -76,8 +80,28 @@ func (uc *userUseCase) Create(firstName, lastName, cpf, email, phone, password s
 	return user, nil
 }
 
+// Update atualiza os dados de um usuário existente.
+func (uc *userUseCase) Update(user *entities.User) error {
+	if err := uc.repo.Update(user); err != nil {
+		return fmt.Errorf("erro ao atualizar usuário: %w", err)
+	}
+
+	return nil
+}
+
+// Delete remove um usuário pelo ID.
+func (uc *userUseCase) Delete(id uuid.UUID) error {
+	if err := uc.repo.Delete(id); err != nil {
+		return fmt.Errorf("erro ao deletar usuário: %w", err)
+	}
+
+	return nil
+}
+
+// ── Leitura por chave única ───────────────────────────────────────────────────
+
 // GetByID busca um usuário pelo ID.
-func (uc *userUseCase) GetByID(id string) (*entities.User, error) {
+func (uc *userUseCase) GetByID(id uuid.UUID) (*entities.User, error) {
 	user, err := uc.repo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -102,85 +126,63 @@ func (uc *userUseCase) GetByEmail(email string) (*entities.User, error) {
 	return user, nil
 }
 
-// Update atualiza os dados de um usuário existente.
-func (uc *userUseCase) Update(user *entities.User) error {
-	if err := uc.repo.Update(user); err != nil {
-		return fmt.Errorf("erro ao atualizar usuário: %w", err)
-	}
-
-	return nil
-}
-
-// Delete remove um usuário pelo ID.
-func (uc *userUseCase) Delete(id string) error {
-	if err := uc.repo.Delete(id); err != nil {
-		return fmt.Errorf("erro ao deletar usuário: %w", err)
-	}
-
-	return nil
-}
-
-// Search realiza busca textual por nome, email ou CPF.
-func (uc *userUseCase) Search(query string) ([]*entities.User, error) {
-	users, err := uc.repo.Search(query)
-	if err != nil {
-		return nil, fmt.Errorf("erro ao buscar usuários: %w", err)
-	}
-
-	return users, nil
-}
-
-// Login autentica um usuário e retorna os tokens JWT.
-func (uc *userUseCase) Login(email, password string) (string, string, error) {
-	user, err := uc.repo.GetByEmail(email)
+// GetByCPF busca um usuário pelo CPF.
+func (uc *userUseCase) GetByCPF(cpf string) (*entities.User, error) {
+	user, err := uc.repo.GetByCPF(cpf)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", "", fmt.Errorf("credenciais inválidas")
+			return nil, fmt.Errorf("usuário não encontrado")
 		}
-
-		return "", "", fmt.Errorf("erro ao buscar usuário: %w", err)
+		return nil, fmt.Errorf("erro ao buscar usuário: %w", err)
 	}
 
-	match, err := hash.VerifyPassword(password, user.PasswordHash)
-	if err != nil {
-		return "", "", fmt.Errorf("erro ao verificar senha: %w", err)
-	}
-
-	if !match {
-		return "", "", fmt.Errorf("credenciais inválidas")
-	}
-
-	accessToken, err := jwt.GenerateAccessToken(
-		user.ID.String(),
-		user.Email,
-		string(user.Role),
-	)
-	if err != nil {
-		return "", "", fmt.Errorf("erro ao gerar access token: %w", err)
-	}
-
-	refreshToken, err := jwt.GenerateRefreshToken(
-		user.ID.String(),
-	)
-	if err != nil {
-		return "", "", fmt.Errorf("erro ao gerar refresh token: %w", err)
-	}
-
-	return accessToken, refreshToken, nil
+	return user, nil
 }
 
-// RefreshToken valida o refresh token e retorna um novo access token.
-func (uc *userUseCase) RefreshToken(refreshToken string) (string, error) {
-	claims, err := jwt.ValidateRefreshToken(refreshToken)
+// ── Busca com filtros ─────────────────────────────────────────────────────────
+
+// Search realiza busca textual por nome, email ou CPF.
+func (uc *userUseCase) Search(filter domain.UserFilters) (pagination.Result[*entities.User], error) {
+	users, total, err := uc.repo.Search(filter)
 	if err != nil {
-		return "", fmt.Errorf("refresh token inválido: %w", err)
+		return pagination.Result[*entities.User]{}, fmt.Errorf("erro ao buscar usuários: %w", err)
 	}
 
-	// Se precisar de email e role no access token, busca o usuário
-	user, err := uc.repo.GetByID(claims.UserID)
-	if err != nil {
-		return "", fmt.Errorf("usuário não encontrado: %w", err)
-	}
+	return pagination.New(users, total, filter.Page, filter.PageSize), nil
+}
 
-	return jwt.GenerateAccessToken(user.ID.String(), user.Email, string(user.Role))
+// ── Operações de conta ────────────────────────────────────────────────────────
+
+// ActivateUser atualiza o status para ATIVO da conta de um usuário.
+func (uc *userUseCase) ActivateUser(id uuid.UUID) error {
+	if err := uc.repo.SetActive(id, true); err != nil {
+		return fmt.Errorf("erro ao ativar conta do usuário: %w", err)
+	}
+	return nil
+}
+
+// DeactivateUser atualiza o status para INATIVO da conta de um usuário.
+func (uc *userUseCase) DeactivateUser(id uuid.UUID) error {
+	if err := uc.repo.SetActive(id, false); err != nil {
+		return fmt.Errorf("erro ao desativar conta do usuário: %w", err)
+	}
+	return nil
+}
+
+// VerifyEmail atualiza o status do email do usuário para VERIFICADO.
+func (uc *userUseCase) VerifyEmail(id uuid.UUID) error {
+	if err := uc.repo.SetEmailVerified(id); err != nil {
+		return fmt.Errorf("erro ao verificar email do usuário: %w", err)
+	}
+	return nil
+}
+
+// RecordLogin atualiza a última data de login de um usuário.
+func (uc *userUseCase) RecordLogin(id uuid.UUID) error {
+	now := time.Now().UTC()
+
+	if err := uc.repo.UpdateLastLogin(id, now); err != nil {
+		return fmt.Errorf("erro ao atualizar horário de login do usuário: %w", err)
+	}
+	return nil
 }
