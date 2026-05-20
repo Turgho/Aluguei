@@ -29,21 +29,6 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// getSecretKey retorna a chave JWT carregada da variável de ambiente.
-func getSecretKey(env string) ([]byte, error) {
-	secret := os.Getenv(env)
-
-	if secret == "" {
-		return nil, fmt.Errorf("%s não configurado", env)
-	}
-
-	if len(secret) < 32 {
-		return nil, fmt.Errorf("%s deve ter no mínimo 32 caracteres", env)
-	}
-
-	return []byte(secret), nil
-}
-
 // GenerateAccessToken gera um access token JWT com duração curta.
 //
 // O token contém:
@@ -162,4 +147,19 @@ func validateToken(tokenStr, envSecret, expectedType string) (*Claims, error) {
 	}
 
 	return claims, nil
+}
+
+// getSecretKey retorna a chave JWT carregada da variável de ambiente.
+func getSecretKey(env string) ([]byte, error) {
+	secret := os.Getenv(env)
+
+	if secret == "" {
+		return nil, fmt.Errorf("%s não configurado", env)
+	}
+
+	if len(secret) < 32 {
+		return nil, fmt.Errorf("%s deve ter no mínimo 32 caracteres", env)
+	}
+
+	return []byte(secret), nil
 }
