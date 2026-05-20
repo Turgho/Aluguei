@@ -9,16 +9,18 @@ import (
 	"github.com/Turgho/Aluguei/pkg/jwt"
 	"github.com/Turgho/Aluguei/pkg/response"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // AuthHandler agrupa os handlers HTTP relacionados à autenticação.
 type AuthHandler struct {
-	uc usecases.UserUseCase
+	authUC usecases.AuthUseCase // ← AuthUseCase, não UserUseCase
+	userUC usecases.UserUseCase // ← necessário só para Register e Me
 }
 
 // NewAuthHandler retorna uma instância de [AuthHandler].
-func NewAuthHandler(uc usecases.UserUseCase) *AuthHandler {
-	return &AuthHandler{uc: uc}
+func NewAuthHandler(authUC usecases.AuthUseCase, userUC usecases.UserUseCase) *AuthHandler {
+	return &AuthHandler{authUC: authUC, userUC: userUC}
 }
 
 // ── Request / Response ─────────────────────────────────────────────────────
@@ -108,7 +110,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	user, err := h.uc.Create(req.FirstName, req.LastName, req.CPF, req.Email, req.Phone, req.Password, req.Role)
+	user, err := h.userUC.Create(req.FirstName, req.LastName, req.CPF, req.Email, req.Phone, req.Password, req.Role)
 	if err != nil {
 		response.Error(c, http.StatusConflict, "CONFLICT", err.Error())
 		return
@@ -135,7 +137,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	accessToken, refreshToken, err := h.uc.Login(req.Email, req.Password)
+	accessToken, refreshToken, err := h.authUC.Login(req.Email, req.Password)
 	if err != nil {
 		response.Error(c, http.StatusUnauthorized, "INVALID_CREDENTIALS", "credenciais inválidas")
 		return
@@ -163,7 +165,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	newAccessToken, err := h.uc.RefreshToken(tokenStr)
+	newAccessToken, err := h.authUC.RefreshToken(tokenStr)
 	if err != nil {
 		response.Error(c, http.StatusUnauthorized, "INVALID_REFRESH_TOKEN", "refresh token inválido ou expirado")
 		return
@@ -201,7 +203,14 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 func (h *AuthHandler) Me(c *gin.Context) {
 	claims := c.MustGet("user").(*jwt.Claims)
 
-	user, err := h.uc.GetByID(claims.UserID)
+	// claims.UserID é string — converte para uuid.UUID
+	id, err := uuid.Parse(claims.UserID)
+	if err != nil {
+		response.Error(c, http.StatusUnauthorized, "INVALID_TOKEN", "token inválido")
+		return
+	}
+
+	user, err := h.userUC.GetByID(id)
 	if err != nil {
 		response.Error(c, http.StatusNotFound, "USER_NOT_FOUND", "usuário não encontrado")
 		return
