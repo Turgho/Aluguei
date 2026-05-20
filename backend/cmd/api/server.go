@@ -12,7 +12,7 @@ import (
 	"github.com/Turgho/Aluguei/internal/delivery/http/middleware"
 	"github.com/Turgho/Aluguei/internal/infra/database"
 	"github.com/Turgho/Aluguei/internal/infra/repositories"
-	userUseCase "github.com/Turgho/Aluguei/internal/usecase"
+	"github.com/Turgho/Aluguei/internal/usecase"
 	"github.com/Turgho/Aluguei/pkg/logger"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -104,11 +104,16 @@ func (s *Server) Run() {
 //   - Rotas públicas (/api/v1): acessíveis sem autenticação (login, registro)
 //   - Rotas privadas (/api/v1): protegidas pelo middleware [middleware.Auth]
 func (s *Server) setupRoutes() {
-	// Users
+	// Repositories
 	userRepo := repositories.NewUserRepository(s.db)
-	userUC := userUseCase.NewUserUseCase(userRepo)
+
+	// UseCases
+	userUC := usecase.NewUserUseCase(userRepo)
+	authUC := usecase.NewAuthUseCase(userUC)
+
+	// Handlers
 	userH := handlers.NewUserHandler(userUC)
-	authH := handlers.NewAuthHandler(userUC)
+	authH := handlers.NewAuthHandler(authUC, userUC)
 
 	// Swagger Docs
 	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
