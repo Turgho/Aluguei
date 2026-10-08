@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Aluguei</title>
+  <base href="/">
+
+  <!-- ── Mobile-first essentials ── -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- ── PWA / iOS ── -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Aluguei">
+  <link rel="apple-touch-icon" href="icons/icon-152x152.png">
+
+  <!-- ── Theme color (barra do browser no Android) ── -->
+  <meta name="theme-color" content="#ea580c">
+
+  <!-- ── Manifest PWA ── -->
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- ── SEO básico ── -->
+  <meta name="description" content="Gerencie seus imóveis e locações com o Aluguei">
+
+  <!-- ── Favicon ── -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <!-- Aplica tema salvo antes do Angular carregar (evita flash light no refresh) -->
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem('theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (theme === 'dark' || (!theme && prefersDark)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>
