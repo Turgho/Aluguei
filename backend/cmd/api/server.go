@@ -12,7 +12,7 @@ import (
 	"github.com/Turgho/Aluguei/internal/delivery/http/middleware"
 	"github.com/Turgho/Aluguei/internal/infra/database"
 	"github.com/Turgho/Aluguei/internal/infra/repositories"
-	userUseCase "github.com/Turgho/Aluguei/internal/usecase"
+	"github.com/Turgho/Aluguei/internal/usecase"
 	"github.com/Turgho/Aluguei/pkg/logger"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -72,9 +72,9 @@ func NewServer() *Server {
 			"http://192.168.1.7:4200", // PC
 			"http://192.168.1.6:4200", // CELULAR
 		},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
-		ExposeHeaders:    []string{"Content-Length"},
+		ExposeHeaders:    []string{"Content-Length", "Set-Cookie"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
@@ -104,11 +104,16 @@ func (s *Server) Run() {
 //   - Rotas públicas (/api/v1): acessíveis sem autenticação (login, registro)
 //   - Rotas privadas (/api/v1): protegidas pelo middleware [middleware.Auth]
 func (s *Server) setupRoutes() {
-	// Users
+	// Repositories
 	userRepo := repositories.NewUserRepository(s.db)
-	userUC := userUseCase.NewUserUseCase(userRepo)
+
+	// UseCases
+	userUC := usecase.NewUserUseCase(userRepo)
+	authUC := usecase.NewAuthUseCase(userUC)
+
+	// Handlers
 	userH := handlers.NewUserHandler(userUC)
-	authH := handlers.NewAuthHandler(userUC)
+	authH := handlers.NewAuthHandler(authUC, userUC)
 
 	// Swagger Docs
 	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -116,10 +121,10 @@ func (s *Server) setupRoutes() {
 	auth := s.router.Group("/api/v1/auth")
 	{
 		auth.POST("/login", authH.Login)
-		auth.POST("/logout", authH.Logout)
 		auth.POST("/refresh", authH.RefreshToken)
 		auth.POST("/register", authH.Register)
 		auth.GET("/me", middleware.Auth(), authH.Me)
+		auth.POST("/logout", authH.Logout)
 	}
 
 	private := s.router.Group("/api/v1")

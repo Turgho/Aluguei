@@ -37,6 +37,6 @@ export interface StoredUser {
 // AuthResponse
 export interface AuthResponse {
   success: boolean;
-  user?: BackendUser;
   message?: string;
+  user?: BackendUser;
 }

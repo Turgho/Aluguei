@@ -1,0 +1,186 @@
+<div class="flex min-h-screen flex-col bg-bg-secondary">
+  <div class="flex-1 grid lg:grid-cols-2">
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- PAINEL DA MARCA (esquerda - apenas desktop) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <aside class="hidden lg:flex relative overflow-hidden bg-brand-gradient flex-col justify-between p-12 text-white" appStagger="fade-up" [staggerDelay]="150">
+      <!-- Grid pattern overlay -->
+      <div class="absolute inset-0 opacity-10" [innerHTML]="gridPattern | safeHtml" aria-hidden="true"></div>
+
+      <!-- Orbs decorativos -->
+      <div class="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-white/5 blur-3xl" aria-hidden="true"></div>
+      <div class="absolute bottom-40 -left-16 w-64 h-64 rounded-full bg-white/5 blur-3xl" aria-hidden="true"></div>
+
+      <!-- Header: Logo -->
+      <div class="relative z-10">
+        <div class="flex items-center gap-3 mb-12" appAnimateOnView="slide-right" [delay]="100">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm border border-white/20">
+            <app-icon name="building" size="lg" />
+          </div>
+          <span class="text-2xl font-extrabold tracking-tight">
+            Alugu<span class="text-brand-500">EI!</span>
+          </span>
+        </div>
+
+        <h1 class="text-5xl font-extrabold leading-[1.1] tracking-tight mb-4" appAnimateOnView="fade-up" [delay]="200">
+          Gerencie seus<br />
+          imóveis com<br />
+          <span class="text-brand-500">inteligência</span>
+        </h1>
+
+        <p class="text-brand-100 text-lg leading-relaxed max-w-md opacity-90" appAnimateOnView="fade-up" [delay]="300">
+          Contratos, pagamentos e locatários reunidos numa plataforma segura e acessível em qualquer dispositivo.
+        </p>
+      </div>
+
+      <!-- Ilustração central -->
+      <div class="relative z-10 flex-1 flex items-end justify-center my-8" appAnimateOnView="scale-in" [delay]="400" [duration]="400">
+        <app-building-illustration />
+      </div>
+
+      <!-- Stats na base -->
+      <div class="relative z-10 grid grid-cols-3 gap-4" appStagger="fade-up" [staggerDelay]="80">
+        @for (stat of stats; track stat.label) {
+          <div class="rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-3 text-center">
+            <p class="text-2xl font-extrabold leading-none mb-1">{{ stat.value }}</p>
+            <p class="text-brand-100 text-xs opacity-75">{{ stat.label }}</p>
+          </div>
+        }
+      </div>
+    </aside>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- FORMULÁRIO (direita - mobile first) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <main class="flex flex-col items-center justify-center min-h-screen p-5 sm:p-6 lg:p-12 pb-20 sm:pb-24 lg:pb-12 bg-bg-primary relative overflow-hidden">
+      <!-- Padrão de pontos no fundo -->
+      <div class="absolute inset-0 opacity-30" [innerHTML]="dotsPattern | safeHtml" aria-hidden="true"></div>
+
+      <!-- Theme toggle no canto -->
+      <div class="absolute top-4 right-4 sm:top-6 sm:right-6 z-20" appAnimateOnView="fade-in" [delay]="100">
+        <app-theme-toggle />
+      </div>
+
+      <!-- Logo mobile (visível apenas em mobile) -->
+      <div class="lg:hidden flex items-center gap-2 mb-6 sm:mb-8 relative z-10" appAnimateOnView="fade-down" [delay]="100">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-brand">
+          <app-icon name="building" />
+        </div>
+        <span class="text-xl font-bold text-text-primary">
+          Alugu<span class="text-brand-500">EI!</span>
+        </span>
+      </div>
+
+      <!-- Card do formulário -->
+      <div class="relative z-10 w-full max-w-[420px]" appAnimateOnView="fade-up" [delay]="150">
+        <!-- Header -->
+        <div class="mb-6 sm:mb-8">
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-text-primary tracking-tight mb-2">
+            Entrar na conta
+          </h2>
+          <p class="text-sm sm:text-base text-text-secondary">
+            Não tem conta?
+            <a
+              routerLink="/register"
+              class="text-brand-600 dark:text-brand-400 font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded">
+              Cadastre-se grátis
+            </a>
+          </p>
+        </div>
+
+        <!-- Alert de erro -->
+        @if (loginError()) {
+          <div
+            class="flex items-start gap-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl px-4 py-3 mb-5 sm:mb-6 animate-fade-in"
+            role="alert">
+            <app-icon name="warning" size="sm" />
+            <p class="text-sm">{{ loginError() }}</p>
+          </div>
+        }
+
+        <!-- Formulário -->
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-5 sm:space-y-6" appStagger="fade-up" [staggerDelay]="60">
+          <!-- E-mail -->
+          <app-input
+            label="E-mail"
+            type="email"
+            placeholder="seu@email.com"
+            icon="mail"
+            [error]="emailError()"
+            formControlName="email" />
+
+          <!-- Senha -->
+          <app-input
+              label="Senha"
+              type="password"
+              placeholder="Mínimo 8 caracteres"
+              icon="lock"
+              [error]="passwordError()"
+              formControlName="password" />
+
+          <!-- Lembrar-me -->
+          <div class="flex items-center justify-between my-4">
+            <app-checkbox formControlName="rememberMe">
+              Lembrar de mim
+            </app-checkbox>
+
+            <a
+              routerLink="/forgot-password"
+              class="text-xs text-brand-600 dark:text-brand-400 font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded">
+              Esqueci a senha
+            </a>
+          </div>
+
+          <!-- Botão Submit -->
+          <app-button
+            type="submit"
+            [loading]="isLoading()"
+            [disabled]="form.invalid"
+            [full]="true"
+            size="lg">
+            Entrar
+          </app-button>
+        </form>
+
+        <!-- Divider -->
+        <div class="flex items-center gap-3 my-5 sm:my-6" appAnimateOnView="fade-in" [delay]="400">
+          <div class="flex-1 h-px bg-border"></div>
+          <span class="text-xs text-text-secondary">ou continue com</span>
+          <div class="flex-1 h-px bg-border"></div>
+        </div>
+
+        <!-- Social Login -->
+        <div class="grid grid-cols-2 gap-3" appStagger="fade-up" [staggerDelay]="80">
+          <app-button variant="outline" [full]="true">
+            <app-icon name="google" size="md" [brand]="true" />
+            <span class="hidden sm:inline">Google</span>
+          </app-button>
+          
+          <app-button variant="outline" [full]="true">
+            <app-icon name="microsoft" size="md" [brand]="true" />
+            <span class="hidden sm:inline">Microsoft</span>
+          </app-button>
+        </div>
+
+        <!-- Prova social -->
+        <div class="mt-6 sm:mt-8 flex items-center justify-center gap-3" appAnimateOnView="fade-up" [delay]="500">
+          <div class="flex -space-x-2">
+            @for (avatar of avatars; track avatar.initial) {
+              <div
+                class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-bg-primary text-xs font-bold"
+                [class]="avatar.color">
+                {{ avatar.initial }}
+              </div>
+            }
+          </div>
+          <p class="text-xs sm:text-sm text-text-secondary">
+            <span class="font-semibold text-text-primary">+840</span> proprietários confiam
+          </p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <app-footer variant="full" />
+</div>

@@ -15,7 +15,7 @@ export const appConfig: ApplicationConfig = {
     // Router
     provideRouter(routes, withViewTransitions(), withComponentInputBinding()),
     // HttpClient
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor, loadingInterceptor])),
+    provideHttpClient(withFetch(), withInterceptors([loadingInterceptor, authInterceptor])),
     // Service Worker
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),

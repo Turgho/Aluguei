@@ -12,6 +12,8 @@ import (
 
 	"github.com/Turgho/Aluguei/internal/delivery/http/handlers"
 	"github.com/Turgho/Aluguei/internal/domain/entities"
+	"github.com/Turgho/Aluguei/internal/domain/repositories"
+	"github.com/Turgho/Aluguei/pkg/pagination"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -22,33 +24,47 @@ import (
 
 type mockUserUseCase struct {
 	createFn       func(firstName, lastName, cpf, email, phone, password string, role entities.Role) (*entities.User, error)
-	getByIDFn      func(id string) (*entities.User, error)
+	getByIDFn      func(id uuid.UUID) (*entities.User, error)
 	getByEmailFn   func(email string) (*entities.User, error)
+	getByCPFFn     func(cpf string) (*entities.User, error)
 	updateFn       func(user *entities.User) error
-	deleteFn       func(id string) error
-	searchFn       func(query string) ([]*entities.User, error)
+	deleteFn       func(id uuid.UUID) error
+	searchFn       func(filters repositories.UserFilters) (pagination.Result[*entities.User], error)
+	activateUserFn func(id uuid.UUID) error
+	deactivateFn   func(id uuid.UUID) error
+	verifyEmailFn  func(id uuid.UUID) error
+	recordLoginFn  func(id uuid.UUID) error
+
+	// auth
 	loginFn        func(email, password string) (string, string, error)
-	refreshTokenFn func(refreshToken string) (string, error)
+	refreshTokenFn func(refreshToken string) (string, string, error)
 }
 
 func (m *mockUserUseCase) Create(firstName, lastName, cpf, email, phone, password string, role entities.Role) (*entities.User, error) {
 	return m.createFn(firstName, lastName, cpf, email, phone, password, role)
 }
-func (m *mockUserUseCase) GetByID(id string) (*entities.User, error) {
+func (m *mockUserUseCase) GetByID(id uuid.UUID) (*entities.User, error) {
 	return m.getByIDFn(id)
 }
 func (m *mockUserUseCase) GetByEmail(email string) (*entities.User, error) {
 	return m.getByEmailFn(email)
 }
+func (m *mockUserUseCase) GetByCPF(cpf string) (*entities.User, error) {
+	return m.getByCPFFn(cpf)
+}
 func (m *mockUserUseCase) Update(user *entities.User) error {
 	return m.updateFn(user)
 }
-func (m *mockUserUseCase) Delete(id string) error {
+func (m *mockUserUseCase) Delete(id uuid.UUID) error {
 	return m.deleteFn(id)
 }
-func (m *mockUserUseCase) Search(query string) ([]*entities.User, error) {
-	return m.searchFn(query)
+func (m *mockUserUseCase) Search(filters repositories.UserFilters) (pagination.Result[*entities.User], error) {
+	return m.searchFn(filters)
 }
+func (m *mockUserUseCase) ActivateUser(id uuid.UUID) error   { return m.activateUserFn(id) }
+func (m *mockUserUseCase) DeactivateUser(id uuid.UUID) error { return m.deactivateFn(id) }
+func (m *mockUserUseCase) VerifyEmail(id uuid.UUID) error    { return m.verifyEmailFn(id) }
+func (m *mockUserUseCase) RecordLogin(id uuid.UUID) error    { return m.recordLoginFn(id) }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -77,7 +93,6 @@ func newTestRouter(h *handlers.UserHandler) *gin.Engine {
 	return r
 }
 
-// doRequest é um helper para evitar repetição nas chamadas HTTP
 func doRequest(r *gin.Engine, method, url string, body []byte) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
 	var req *http.Request
@@ -91,22 +106,23 @@ func doRequest(r *gin.Engine, method, url string, body []byte) *httptest.Respons
 	return w
 }
 
+func fakePagedResult(users []*entities.User) pagination.Result[*entities.User] {
+	return pagination.New(users, int64(len(users)), 1, 20)
+}
+
 // ── GetByID ───────────────────────────────────────────────────────────────────
 
 func TestGetByID(t *testing.T) {
 	t.Run("retorna usuário com sucesso", func(t *testing.T) {
 		user := fakeUser()
 		uc := &mockUserUseCase{
-			getByIDFn: func(id string) (*entities.User, error) {
-				return user, nil
-			},
+			getByIDFn: func(id uuid.UUID) (*entities.User, error) { return user, nil },
 		}
 		r := newTestRouter(handlers.NewUserHandler(uc))
 		w := doRequest(r, http.MethodGet, "/api/v1/users/"+user.ID.String(), nil)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		// Valida campos do body
 		var res map[string]any
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 		assert.Equal(t, user.ID.String(), res["id"])
@@ -115,9 +131,20 @@ func TestGetByID(t *testing.T) {
 		assert.Equal(t, user.Email, res["email"])
 	})
 
+	t.Run("ID inválido retorna 400", func(t *testing.T) {
+		r := newTestRouter(handlers.NewUserHandler(&mockUserUseCase{}))
+		w := doRequest(r, http.MethodGet, "/api/v1/users/nao-e-um-uuid", nil)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var res map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+		assert.Equal(t, "INVALID_ID", res["code"])
+	})
+
 	t.Run("usuário não encontrado retorna 404", func(t *testing.T) {
 		uc := &mockUserUseCase{
-			getByIDFn: func(id string) (*entities.User, error) {
+			getByIDFn: func(id uuid.UUID) (*entities.User, error) {
 				return nil, errors.New("not found")
 			},
 		}
@@ -134,15 +161,28 @@ func TestGetByID(t *testing.T) {
 	t.Run("não expõe password_hash na resposta", func(t *testing.T) {
 		user := fakeUser()
 		uc := &mockUserUseCase{
-			getByIDFn: func(id string) (*entities.User, error) {
-				return user, nil
-			},
+			getByIDFn: func(id uuid.UUID) (*entities.User, error) { return user, nil },
 		}
 		r := newTestRouter(handlers.NewUserHandler(uc))
 		w := doRequest(r, http.MethodGet, "/api/v1/users/"+user.ID.String(), nil)
 
 		assert.NotContains(t, w.Body.String(), "password_hash")
 		assert.NotContains(t, w.Body.String(), "hash123")
+	})
+
+	t.Run("repassa o UUID correto para o usecase", func(t *testing.T) {
+		user := fakeUser()
+		var capturedID uuid.UUID
+		uc := &mockUserUseCase{
+			getByIDFn: func(id uuid.UUID) (*entities.User, error) {
+				capturedID = id
+				return user, nil
+			},
+		}
+		r := newTestRouter(handlers.NewUserHandler(uc))
+		doRequest(r, http.MethodGet, "/api/v1/users/"+user.ID.String(), nil)
+
+		assert.Equal(t, user.ID, capturedID)
 	})
 }
 
@@ -152,7 +192,7 @@ func TestUpdate(t *testing.T) {
 	t.Run("atualiza first_name com sucesso", func(t *testing.T) {
 		user := fakeUser()
 		uc := &mockUserUseCase{
-			getByIDFn: func(id string) (*entities.User, error) { return user, nil },
+			getByIDFn: func(id uuid.UUID) (*entities.User, error) { return user, nil },
 			updateFn:  func(u *entities.User) error { return nil },
 		}
 		r := newTestRouter(handlers.NewUserHandler(uc))
@@ -170,7 +210,7 @@ func TestUpdate(t *testing.T) {
 	t.Run("atualiza múltiplos campos com sucesso", func(t *testing.T) {
 		user := fakeUser()
 		uc := &mockUserUseCase{
-			getByIDFn: func(id string) (*entities.User, error) { return user, nil },
+			getByIDFn: func(id uuid.UUID) (*entities.User, error) { return user, nil },
 			updateFn:  func(u *entities.User) error { return nil },
 		}
 		r := newTestRouter(handlers.NewUserHandler(uc))
@@ -195,7 +235,7 @@ func TestUpdate(t *testing.T) {
 		user := fakeUser()
 		originalFirst := user.FirstName
 		uc := &mockUserUseCase{
-			getByIDFn: func(id string) (*entities.User, error) { return user, nil },
+			getByIDFn: func(id uuid.UUID) (*entities.User, error) { return user, nil },
 			updateFn:  func(u *entities.User) error { return nil },
 		}
 		r := newTestRouter(handlers.NewUserHandler(uc))
@@ -210,9 +250,18 @@ func TestUpdate(t *testing.T) {
 		assert.Equal(t, originalFirst, res["first_name"])
 	})
 
+	t.Run("ID inválido retorna 400", func(t *testing.T) {
+		r := newTestRouter(handlers.NewUserHandler(&mockUserUseCase{}))
+
+		body, _ := json.Marshal(map[string]any{"first_name": "Test"})
+		w := doRequest(r, http.MethodPut, "/api/v1/users/nao-e-um-uuid", body)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
 	t.Run("usuário não encontrado retorna 404", func(t *testing.T) {
 		uc := &mockUserUseCase{
-			getByIDFn: func(id string) (*entities.User, error) {
+			getByIDFn: func(id uuid.UUID) (*entities.User, error) {
 				return nil, errors.New("not found")
 			},
 		}
@@ -227,7 +276,7 @@ func TestUpdate(t *testing.T) {
 	t.Run("body inválido retorna 400", func(t *testing.T) {
 		user := fakeUser()
 		uc := &mockUserUseCase{
-			getByIDFn: func(id string) (*entities.User, error) { return user, nil },
+			getByIDFn: func(id uuid.UUID) (*entities.User, error) { return user, nil },
 		}
 		r := newTestRouter(handlers.NewUserHandler(uc))
 
@@ -239,10 +288,8 @@ func TestUpdate(t *testing.T) {
 	t.Run("erro interno no update retorna 500", func(t *testing.T) {
 		user := fakeUser()
 		uc := &mockUserUseCase{
-			getByIDFn: func(id string) (*entities.User, error) { return user, nil },
-			updateFn: func(u *entities.User) error {
-				return errors.New("db error")
-			},
+			getByIDFn: func(id uuid.UUID) (*entities.User, error) { return user, nil },
+			updateFn:  func(u *entities.User) error { return errors.New("db error") },
 		}
 		r := newTestRouter(handlers.NewUserHandler(uc))
 
@@ -258,7 +305,7 @@ func TestUpdate(t *testing.T) {
 func TestDelete(t *testing.T) {
 	t.Run("deleta com sucesso retorna 204 sem body", func(t *testing.T) {
 		uc := &mockUserUseCase{
-			deleteFn: func(id string) error { return nil },
+			deleteFn: func(id uuid.UUID) error { return nil },
 		}
 		r := newTestRouter(handlers.NewUserHandler(uc))
 		w := doRequest(r, http.MethodDelete, "/api/v1/users/"+uuid.New().String(), nil)
@@ -267,11 +314,16 @@ func TestDelete(t *testing.T) {
 		assert.Empty(t, w.Body.String())
 	})
 
+	t.Run("ID inválido retorna 400", func(t *testing.T) {
+		r := newTestRouter(handlers.NewUserHandler(&mockUserUseCase{}))
+		w := doRequest(r, http.MethodDelete, "/api/v1/users/nao-e-um-uuid", nil)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
 	t.Run("usuário não encontrado retorna 404", func(t *testing.T) {
 		uc := &mockUserUseCase{
-			deleteFn: func(id string) error {
-				return errors.New("not found")
-			},
+			deleteFn: func(id uuid.UUID) error { return errors.New("not found") },
 		}
 		r := newTestRouter(handlers.NewUserHandler(uc))
 		w := doRequest(r, http.MethodDelete, "/api/v1/users/"+uuid.New().String(), nil)
@@ -287,11 +339,11 @@ func TestDelete(t *testing.T) {
 // ── Search ────────────────────────────────────────────────────────────────────
 
 func TestSearch(t *testing.T) {
-	t.Run("retorna lista de usuários", func(t *testing.T) {
+	t.Run("retorna resultado paginado com sucesso", func(t *testing.T) {
 		users := []*entities.User{fakeUser(), fakeUser()}
 		uc := &mockUserUseCase{
-			searchFn: func(query string) ([]*entities.User, error) {
-				return users, nil
+			searchFn: func(f repositories.UserFilters) (pagination.Result[*entities.User], error) {
+				return fakePagedResult(users), nil
 			},
 		}
 		r := newTestRouter(handlers.NewUserHandler(uc))
@@ -299,15 +351,16 @@ func TestSearch(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var res []map[string]any
+		var res map[string]any
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-		assert.Len(t, res, 2)
+		assert.Equal(t, float64(2), res["total"])
+		assert.Len(t, res["data"], 2)
 	})
 
-	t.Run("retorna lista vazia quando não encontra", func(t *testing.T) {
+	t.Run("retorna resultado vazio quando não encontra", func(t *testing.T) {
 		uc := &mockUserUseCase{
-			searchFn: func(query string) ([]*entities.User, error) {
-				return []*entities.User{}, nil
+			searchFn: func(f repositories.UserFilters) (pagination.Result[*entities.User], error) {
+				return fakePagedResult([]*entities.User{}), nil
 			},
 		}
 		r := newTestRouter(handlers.NewUserHandler(uc))
@@ -315,54 +368,49 @@ func TestSearch(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var res []map[string]any
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-		assert.Len(t, res, 0)
-	})
-
-	t.Run("parâmetro q ausente retorna 400", func(t *testing.T) {
-		uc := &mockUserUseCase{}
-		r := newTestRouter(handlers.NewUserHandler(uc))
-		w := doRequest(r, http.MethodGet, "/api/v1/users/search", nil)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-
 		var res map[string]any
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-		assert.Equal(t, "BAD_REQUEST", res["code"])
+		assert.Equal(t, float64(0), res["total"])
 	})
 
-	t.Run("parâmetro q vazio retorna 400", func(t *testing.T) {
-		uc := &mockUserUseCase{}
+	t.Run("aplica defaults de paginação", func(t *testing.T) {
+		var capturedFilters repositories.UserFilters
+		uc := &mockUserUseCase{
+			searchFn: func(f repositories.UserFilters) (pagination.Result[*entities.User], error) {
+				capturedFilters = f
+				return fakePagedResult([]*entities.User{}), nil
+			},
+		}
 		r := newTestRouter(handlers.NewUserHandler(uc))
-		w := doRequest(r, http.MethodGet, "/api/v1/users/search?q=", nil)
+		doRequest(r, http.MethodGet, "/api/v1/users/search", nil)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, 1, capturedFilters.Page)
+		assert.Equal(t, 20, capturedFilters.PageSize)
+	})
+
+	t.Run("repassa o termo de busca corretamente", func(t *testing.T) {
+		var capturedFilters repositories.UserFilters
+		uc := &mockUserUseCase{
+			searchFn: func(f repositories.UserFilters) (pagination.Result[*entities.User], error) {
+				capturedFilters = f
+				return fakePagedResult([]*entities.User{}), nil
+			},
+		}
+		r := newTestRouter(handlers.NewUserHandler(uc))
+		doRequest(r, http.MethodGet, "/api/v1/users/search?search=maria", nil)
+
+		assert.Equal(t, "maria", capturedFilters.Search)
 	})
 
 	t.Run("erro interno retorna 500", func(t *testing.T) {
 		uc := &mockUserUseCase{
-			searchFn: func(query string) ([]*entities.User, error) {
-				return nil, errors.New("db error")
+			searchFn: func(f repositories.UserFilters) (pagination.Result[*entities.User], error) {
+				return pagination.Result[*entities.User]{}, errors.New("db error")
 			},
 		}
 		r := newTestRouter(handlers.NewUserHandler(uc))
 		w := doRequest(r, http.MethodGet, "/api/v1/users/search?q=joão", nil)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
-	})
-
-	t.Run("repassa o termo correto para o usecase", func(t *testing.T) {
-		var capturedQuery string
-		uc := &mockUserUseCase{
-			searchFn: func(query string) ([]*entities.User, error) {
-				capturedQuery = query
-				return []*entities.User{}, nil
-			},
-		}
-		r := newTestRouter(handlers.NewUserHandler(uc))
-		doRequest(r, http.MethodGet, "/api/v1/users/search?q=maria", nil)
-
-		assert.Equal(t, "maria", capturedQuery)
 	})
 }

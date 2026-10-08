@@ -3,49 +3,57 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, from, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import {
+  AUTH_RETRY_HEADER,
+  SKIP_AUTH_REFRESH_PATTERNS,
+} from '../constants/auth.constants';
 import { AuthService } from '../auth/auth.service';
 
+function shouldAttemptRefresh(
+  url: string,
+  status: number,
+  alreadyRetried: boolean,
+): boolean {
+  if (status !== 401 || alreadyRetried) return false;
+  return !SKIP_AUTH_REFRESH_PATTERNS.some(pattern => pattern.test(url));
+}
+
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const authReq = req.clone({ withCredentials: true });
+
   if (environment.useMockAuth) {
-    return next(req.clone({ withCredentials: true }));
+    return next(authReq);
   }
 
   const auth = inject(AuthService);
   const router = inject(Router);
-  const authReq = req.clone({ withCredentials: true });
 
-  // Intercepta a requisição
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
-      const isRefreshRoute = req.url.includes('/auth/refresh');
-      const isMeRoute = req.url.includes('/auth/me');
-      const isLoginRoute = req.url.includes('/auth/login');
-      const isLogoutRoute = req.url.includes('/auth/logout');
+      const alreadyRetried = req.headers.has(AUTH_RETRY_HEADER);
 
-      // Se o erro é 401 e não é uma rota de refresh, me ou login, logout, atualiza o token
-      if (
-        error.status === 401 &&
-        !isRefreshRoute &&
-        !isMeRoute &&
-        !isLoginRoute &&
-        !isLogoutRoute
-      ) {
-        return from(auth.refreshAccessToken()).pipe(
-          switchMap(() => next(authReq)),
-          catchError(refreshError => {
-            void auth.logout();
-            router.navigate(['/login']);
-            return throwError(() => refreshError);
-          }),
-        );
+      if (!shouldAttemptRefresh(req.url, error.status, alreadyRetried)) {
+        if (error.status === 403) {
+          router.navigate(['/forbidden']);
+        }
+        return throwError(() => error);
       }
 
-      // Se o erro é 403, redireciona para a página de acesso negado
-      if (error.status === 403) {
-        router.navigate(['/forbidden']);
-      }
+      const retryReq = authReq.clone({
+        setHeaders: { [AUTH_RETRY_HEADER]: 'true' },
+      });
 
-      return throwError(() => error);
+      return from(auth.refreshAccessToken()).pipe(
+        switchMap(() => next(retryReq)),
+        catchError(refreshError => {
+          return from(auth.logout()).pipe(
+            switchMap(() => {
+              router.navigate(['/login']);
+              return throwError(() => refreshError);
+            }),
+          );
+        }),
+      );
     }),
   );
 };

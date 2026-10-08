@@ -3,11 +3,14 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/Turgho/Aluguei/internal/domain/entities"
+	"github.com/Turgho/Aluguei/internal/domain/repositories"
 	"github.com/Turgho/Aluguei/internal/domain/usecases"
 	"github.com/Turgho/Aluguei/pkg/response"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // UserHandler agrupa os handlers HTTP relacionados a [entities.User].
@@ -62,6 +65,16 @@ func toUserResponses(users []*entities.User) []userResponse {
 	return res
 }
 
+// parseUUID extrai e valida um UUID de um parâmetro de rota.
+func parseUUID(c *gin.Context, param string) (uuid.UUID, bool) {
+	id, err := uuid.Parse(c.Param(param))
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "ID inválido")
+		return uuid.Nil, false
+	}
+	return id, true
+}
+
 // ── Handlers ───────────────────────────────────────────────────────────────
 
 // GetByID godoc
@@ -72,10 +85,14 @@ func toUserResponses(users []*entities.User) []userResponse {
 //	@Security		CookieAuth
 //	@Param			id	path		string	true	"ID do usuário"
 //	@Success		200	{object}	userResponse
+//	@Failure		400	{object}	response.ErrorResponse
 //	@Failure		404	{object}	response.ErrorResponse
 //	@Router			/api/v1/users/{id} [get]
 func (h *UserHandler) GetByID(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := parseUUID(c, "id")
+	if !ok {
+		return
+	}
 
 	user, err := h.uc.GetByID(id)
 	if err != nil {
@@ -100,7 +117,10 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 //	@Failure		404		{object}	response.ErrorResponse
 //	@Router			/api/v1/users/{id} [put]
 func (h *UserHandler) Update(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := parseUUID(c, "id")
+	if !ok {
+		return
+	}
 
 	user, err := h.uc.GetByID(id)
 	if err != nil {
@@ -140,10 +160,14 @@ func (h *UserHandler) Update(c *gin.Context) {
 //	@Security		CookieAuth
 //	@Param			id	path		string	true	"ID do usuário"
 //	@Success		204
+//	@Failure		400	{object}	response.ErrorResponse
 //	@Failure		404	{object}	response.ErrorResponse
 //	@Router			/api/v1/users/{id} [delete]
 func (h *UserHandler) Delete(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := parseUUID(c, "id")
+	if !ok {
+		return
+	}
 
 	if err := h.uc.Delete(id); err != nil {
 		response.Error(c, http.StatusNotFound, "USER_NOT_FOUND", "usuário não encontrado")
@@ -155,26 +179,37 @@ func (h *UserHandler) Delete(c *gin.Context) {
 
 // Search godoc
 //
-//	@Summary		Busca usuários por nome, email ou CPF
+//	@Summary		Busca usuários com filtros e paginação
 //	@Tags			users
 //	@Produce		json
 //	@Security		CookieAuth
-//	@Param			q	query		string	true	"Termo de busca"
-//	@Success		200	{array}		userResponse
+//	@Param			q				query	string	false	"Termo de busca (nome, email ou CPF)"
+//	@Param			role			query	string	false	"Filtro por role"
+//	@Param			is_active		query	bool	false	"Filtro por status ativo"
+//	@Param			email_verified	query	bool	false	"Filtro por email verificado"
+//	@Param			page			query	int		false	"Página (default: 1)"
+//	@Param			page_size		query	int		false	"Itens por página (default: 20)"
+//	@Success		200	{object}	pagination.Result[userResponse]
 //	@Failure		400	{object}	response.ErrorResponse
 //	@Router			/api/v1/users/search [get]
 func (h *UserHandler) Search(c *gin.Context) {
-	query := c.Query("q")
-	if query == "" {
-		response.Error(c, http.StatusBadRequest, "BAD_REQUEST", "parâmetro q é obrigatório")
-		return
-	}
+	var filters repositories.UserFilters
 
-	users, err := h.uc.Search(query)
+	// Query params
+	filters.Search = c.Query("search")
+
+	// Paginação
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	filters.Page = page
+	filters.PageSize = pageSize
+
+	result, err := h.uc.Search(filters)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, toUserResponses(users))
+	c.JSON(http.StatusOK, result)
 }

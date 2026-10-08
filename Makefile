@@ -98,6 +98,26 @@ migrate-up:
 migrate-down:
 	@migrate -path backend/$(MIGRATION_PATH) -database "$(DATABASE_URL)" down 1
 
+# Desfaz TODAS as migrations
+.PHONY: migrate-reset
+migrate-reset:
+	@migrate -path backend/$(MIGRATION_PATH) -database "$(DATABASE_URL)" down -all
+
+# Limpa estado sujo (quando migration falha no meio)
+.PHONY: migrate-force
+migrate-force:
+	@migrate -path backend/$(MIGRATION_PATH) -database "$(DATABASE_URL)" force $(VERSION)
+
+# Reset completo + sobe tudo de novo
+.PHONY: migrate-fresh
+migrate-fresh: migrate-reset migrate-up
+	@echo "✅ Banco resetado e migrations aplicadas"
+
+# Ver versão atual
+.PHONY: migrate-version
+migrate-version:
+	@migrate -path backend/$(MIGRATION_PATH) -database "$(DATABASE_URL)" version
+
 .PHONY: migrate-create
 migrate-create:
 	@read -p "Nome da migration: " name; \

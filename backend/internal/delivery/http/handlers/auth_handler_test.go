@@ -17,6 +17,7 @@ import (
 	"github.com/Turgho/Aluguei/internal/domain/entities"
 	"github.com/Turgho/Aluguei/pkg/jwt"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,7 +29,7 @@ func (m *mockUserUseCase) Login(email, password string) (string, string, error) 
 	return m.loginFn(email, password)
 }
 
-func (m *mockUserUseCase) RefreshToken(refreshToken string) (string, error) {
+func (m *mockUserUseCase) RefreshToken(refreshToken string) (string, string, error) {
 	return m.refreshTokenFn(refreshToken)
 }
 
@@ -76,7 +77,7 @@ func TestRegister(t *testing.T) {
 				return user, nil
 			},
 		}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 		body, _ := json.Marshal(validBody)
 		w := doRequest(r, http.MethodPost, "/api/v1/auth/register", body)
 
@@ -90,7 +91,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("body inválido retorna 400", func(t *testing.T) {
 		uc := &mockUserUseCase{}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 		w := doRequest(r, http.MethodPost, "/api/v1/auth/register", []byte(`{invalid}`))
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
@@ -98,7 +99,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("campos obrigatórios ausentes retornam 400", func(t *testing.T) {
 		uc := &mockUserUseCase{}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 
 		// sem email
 		body, _ := json.Marshal(map[string]any{
@@ -115,7 +116,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("senha menor que 8 caracteres retorna 400", func(t *testing.T) {
 		uc := &mockUserUseCase{}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 
 		body, _ := json.Marshal(map[string]any{
 			"first_name": "João",
@@ -136,7 +137,7 @@ func TestRegister(t *testing.T) {
 				return nil, errors.New("email already exists")
 			},
 		}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 		body, _ := json.Marshal(validBody)
 		w := doRequest(r, http.MethodPost, "/api/v1/auth/register", body)
 
@@ -157,7 +158,7 @@ func TestLogin(t *testing.T) {
 				return "access-token-abc", "refresh-token-xyz", nil
 			},
 		}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 		body, _ := json.Marshal(map[string]any{
 			"email":    "joao@email.com",
 			"password": "senha123",
@@ -196,7 +197,7 @@ func TestLogin(t *testing.T) {
 				return "", "", errors.New("invalid credentials")
 			},
 		}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 		body, _ := json.Marshal(map[string]any{
 			"email":    "joao@email.com",
 			"password": "errada",
@@ -212,7 +213,7 @@ func TestLogin(t *testing.T) {
 
 	t.Run("body inválido retorna 400", func(t *testing.T) {
 		uc := &mockUserUseCase{}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 		w := doRequest(r, http.MethodPost, "/api/v1/auth/login", []byte(`{invalid}`))
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
@@ -220,7 +221,7 @@ func TestLogin(t *testing.T) {
 
 	t.Run("e-mail inválido retorna 400", func(t *testing.T) {
 		uc := &mockUserUseCase{}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 		body, _ := json.Marshal(map[string]any{
 			"email":    "nao-e-email",
 			"password": "senha123",
@@ -236,7 +237,7 @@ func TestLogin(t *testing.T) {
 				return "access-token-abc", "refresh-token-xyz", nil
 			},
 		}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 		body, _ := json.Marshal(map[string]any{
 			"email":    "joao@email.com",
 			"password": "senha123",
@@ -253,11 +254,11 @@ func TestLogin(t *testing.T) {
 func TestRefreshToken(t *testing.T) {
 	t.Run("renova access token com sucesso", func(t *testing.T) {
 		uc := &mockUserUseCase{
-			refreshTokenFn: func(token string) (string, error) {
-				return "new-access-token", nil
+			refreshTokenFn: func(token string) (string, string, error) {
+				return "new-access-token", "new-refresh-token", nil
 			},
 		}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 
 		// Simula cookie refresh_token enviado pelo browser
 		w := httptest.NewRecorder()
@@ -271,22 +272,28 @@ func TestRefreshToken(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 		assert.Equal(t, true, res["success"])
 
-		// Novo access_token deve estar no cookie
+		// Novos access_token e refresh_token devem estar nos cookies
 		cookies := w.Result().Cookies()
-		var accessCookie *http.Cookie
+		var accessCookie, refreshCookie *http.Cookie
 		for _, c := range cookies {
-			if c.Name == "access_token" {
+			switch c.Name {
+			case "access_token":
 				accessCookie = c
+			case "refresh_token":
+				refreshCookie = c
 			}
 		}
 		require.NotNil(t, accessCookie)
 		assert.Equal(t, "new-access-token", accessCookie.Value)
 		assert.True(t, accessCookie.HttpOnly)
+		require.NotNil(t, refreshCookie)
+		assert.Equal(t, "new-refresh-token", refreshCookie.Value)
+		assert.True(t, refreshCookie.HttpOnly)
 	})
 
 	t.Run("sem cookie refresh_token retorna 401", func(t *testing.T) {
 		uc := &mockUserUseCase{}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 
 		// Requisição sem cookie
 		w := doRequest(r, http.MethodPost, "/api/v1/auth/refresh", nil)
@@ -300,11 +307,11 @@ func TestRefreshToken(t *testing.T) {
 
 	t.Run("refresh token inválido retorna 401", func(t *testing.T) {
 		uc := &mockUserUseCase{
-			refreshTokenFn: func(token string) (string, error) {
-				return "", errors.New("token expirado")
+			refreshTokenFn: func(token string) (string, string, error) {
+				return "", "", errors.New("token expirado")
 			},
 		}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/refresh", nil)
@@ -324,7 +331,7 @@ func TestRefreshToken(t *testing.T) {
 func TestLogout(t *testing.T) {
 	t.Run("logout limpa os cookies e retorna success:true", func(t *testing.T) {
 		uc := &mockUserUseCase{}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
 		w := doRequest(r, http.MethodPost, "/api/v1/auth/logout", nil)
 
 		assert.Equal(t, http.StatusOK, w.Code)
@@ -349,13 +356,18 @@ func TestLogout(t *testing.T) {
 func TestMe(t *testing.T) {
 	t.Run("retorna usuário autenticado com sucesso", func(t *testing.T) {
 		user := fakeUser()
+		uid := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+
 		uc := &mockUserUseCase{
-			getByIDFn: func(id string) (*entities.User, error) {
-				assert.Equal(t, "valid-user-id", id)
+			getByIDFn: func(id uuid.UUID) (*entities.User, error) {
+				assert.Equal(t, uid, id)
 				return user, nil
 			},
 		}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := gin.New()
+		gin.SetMode(gin.TestMode)
+		r.GET("/api/v1/auth/me", fakeJWTMiddleware(uid.String()), handlers.NewAuthHandler(uc, uc).Me)
+
 		w := doRequest(r, http.MethodGet, "/api/v1/auth/me", nil)
 
 		assert.Equal(t, http.StatusOK, w.Code)
@@ -367,12 +379,18 @@ func TestMe(t *testing.T) {
 	})
 
 	t.Run("usuário do token não encontrado retorna 404", func(t *testing.T) {
+		uid := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+
 		uc := &mockUserUseCase{
-			getByIDFn: func(id string) (*entities.User, error) {
+			getByIDFn: func(id uuid.UUID) (*entities.User, error) {
+				assert.Equal(t, uid, id)
 				return nil, errors.New("not found")
 			},
 		}
-		r := newAuthTestRouter(handlers.NewAuthHandler(uc))
+		r := gin.New()
+		gin.SetMode(gin.TestMode)
+		r.GET("/api/v1/auth/me", fakeJWTMiddleware(uid.String()), handlers.NewAuthHandler(uc, uc).Me)
+
 		w := doRequest(r, http.MethodGet, "/api/v1/auth/me", nil)
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
