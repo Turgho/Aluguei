@@ -1,5 +1,5 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { USER_STORAGE_KEY } from '../constants/auth.constants';
@@ -18,13 +18,18 @@ const HTTP_OPTIONS = { withCredentials: true };
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private http = inject(HttpClient);
-  private _user = signal<User | null>(null);
+  private readonly http = inject(HttpClient);
+
+  private readonly _user = signal<User | null>(this.initUserFromStorage());
+
   private _storage: Storage = localStorage;
+
+  /** Mutex: várias requisições 401 simultâneas compartilham o mesmo refresh */
+  private refreshPromise: Promise<void> | null = null;
 
   readonly user = this._user.asReadonly();
   readonly isLoggedIn = computed(() => !!this._user());
-  // Iniciais do usuário
+
   readonly userInitials = computed(() => {
     const name = this._user()?.name ?? '';
     return name
@@ -36,7 +41,6 @@ export class AuthService {
       .toUpperCase();
   });
 
-  // Registra um novo usuário
   async register(payload: RegisterPayload): Promise<void> {
     if (environment.useMockAuth) {
       await this.mockDelay();
@@ -55,13 +59,12 @@ export class AuthService {
   async login(credentials: LoginCredentials): Promise<void> {
     this._storage = credentials.rememberMe ? localStorage : sessionStorage;
 
-    // Se está usando mock de autenticação, simula o login
+    // Mock de autenticação para desenvolvimento
     if (environment.useMockAuth) {
       await this.mockDelay();
       if (!credentials.email || credentials.password.length < 8) {
         throw new Error('Credenciais inválidas');
       }
-      // Define o usuário
       this.setUser({
         id: 'mock-1',
         name: 'Usuário Demo',
@@ -71,7 +74,6 @@ export class AuthService {
       return;
     }
 
-    // Faz a requisição para o backend
     const res = await firstValueFrom(
       this.http.post<AuthResponse>(
         `${environment.apiUrl}/auth/login`,
@@ -80,44 +82,60 @@ export class AuthService {
       ),
     );
 
-    // Se a requisição falhou, lança um erro
     if (!res.success) {
       throw new Error(res.message ?? 'Falha no login');
     }
 
     if (res.user) {
       this.setUser(mapBackendUser(res.user));
+    } else {
+      await this.fetchMe();
     }
   }
 
-  /** Valida sessão com o backend (ou mock) — fonte da verdade para guards */
-  async fetchMe(): Promise<boolean> {
+  /**
+   * Valida sessão no servidor.
+   * /auth/me não passa pelo refresh do interceptor (evita loop) — renovação fica aqui.
+   */
+  async fetchMe(silent = false): Promise<boolean> {
     if (environment.useMockAuth) {
       await this.mockDelay(200);
       const stored = this.loadStoredUser();
       if (!stored) {
-        this.setUser(null);
+        if (!silent) this.clearUser();
         return false;
       }
       this.setUser(fromStoredUser(stored));
       return true;
     }
 
+    const ok = await this.tryGetMeWithRefresh();
+    if (!ok && !silent) {
+      this.clearUser();
+    }
+    return ok;
+  }
+
+  /** Uma tentativa de /auth/me; se 401, faz refresh e tenta só mais uma vez */
+  private async tryGetMeWithRefresh(): Promise<boolean> {
     try {
-      // Faz a requisição para o backend
-      const backendUser = await firstValueFrom(
-        this.http.get<BackendUser>(`${environment.apiUrl}/auth/me`, HTTP_OPTIONS),
-      );
-      this.setUser(mapBackendUser(backendUser));
+      this.setUser(mapBackendUser(await this.getMe()));
+      return true;
+    } catch (err) {
+      if (!this.isUnauthorized(err)) {
+        return false;
+      }
+    }
+
+    try {
+      await this.refreshAccessToken();
+      this.setUser(mapBackendUser(await this.getMe()));
       return true;
     } catch {
-      // Se a requisição falhou, limpa a sessão
-      this.setUser(null);
       return false;
     }
   }
 
-  // Logout do usuário
   async logout(): Promise<void> {
     if (!environment.useMockAuth) {
       try {
@@ -129,62 +147,88 @@ export class AuthService {
           ),
         );
       } catch {
-        // Limpa sessão local mesmo se o backend falhar
+        // Limpa localmente mesmo se o backend falhar
       }
     }
-    this.setUser(null);
+
+    this.clearUser();
   }
 
-  // Atualiza o token de acesso
   async refreshAccessToken(): Promise<void> {
     if (environment.useMockAuth) return;
 
-    const res = await firstValueFrom(
-      this.http.post<AuthResponse>(
-        `${environment.apiUrl}/auth/refresh`,
-        {},
-        HTTP_OPTIONS,
-      ),
-    );
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
 
-    if (!res.success) throw new Error('Refresh falhou');
+    this.refreshPromise = (async () => {
+      try {
+        const res = await firstValueFrom(
+          this.http.post<AuthResponse>(
+            `${environment.apiUrl}/auth/refresh`,
+            {},
+            HTTP_OPTIONS,
+          ),
+        );
+
+        if (!res.success) {
+          throw new Error('Refresh falhou');
+        }
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
   }
 
-  // Define o usuário
-  private setUser(user: User | null): void {
+  private getMe(): Promise<BackendUser> {
+    return firstValueFrom(
+      this.http.get<BackendUser>(`${environment.apiUrl}/auth/me`, HTTP_OPTIONS),
+    );
+  }
+
+  private isUnauthorized(err: unknown): boolean {
+    return err instanceof HttpErrorResponse && err.status === 401;
+  }
+
+  private initUserFromStorage(): User | null {
+    const stored = this.loadStoredUser();
+    return stored ? fromStoredUser(stored) : null;
+  }
+
+  private setUser(user: User): void {
     this._user.set(user);
     removeStorageItem(localStorage, USER_STORAGE_KEY);
     removeStorageItem(sessionStorage, USER_STORAGE_KEY);
-
-    // Se o usuário existe, salva no storage
-    if (user) {
-      setStorageItem(
-        this._storage,
-        USER_STORAGE_KEY,
-        JSON.stringify(toStoredUser(user)),
-      );
-    }
+    setStorageItem(
+      this._storage,
+      USER_STORAGE_KEY,
+      JSON.stringify(toStoredUser(user)),
+    );
   }
 
-  // Carrega o usuário armazenado
+  private clearUser(): void {
+    this._user.set(null);
+    removeStorageItem(localStorage, USER_STORAGE_KEY);
+    removeStorageItem(sessionStorage, USER_STORAGE_KEY);
+  }
+
   private loadStoredUser(): StoredUser | null {
     for (const storage of [sessionStorage, localStorage]) {
       try {
         const raw = getStorageItem(storage, USER_STORAGE_KEY);
-        // Se o usuário existe, carrega no storage
         if (raw) {
           this._storage = storage;
           return JSON.parse(raw) as StoredUser;
         }
       } catch {
-        // Se o usuário não existe, remove do storage
         removeStorageItem(storage, USER_STORAGE_KEY);
       }
     }
     return null;
   }
 
-  // Simula delay de rede
   private mockDelay(ms = 400): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }

@@ -4,8 +4,8 @@ import { UserRole } from './user-role.model';
 export interface RegisterPayload {
   first_name: string;
   last_name: string;
-  cpf: string;
   email: string;
+  cpf: string;
   phone?: string;
   password: string;
   role: UserRole;

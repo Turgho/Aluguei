@@ -4,7 +4,10 @@ import { from } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { AuthService } from '../auth/auth.service';
 
-/** Protege rotas privadas — sempre valida sessão no backend/mock */
+/**
+ * Rotas privadas: valida sessão no servidor.
+ * fetchMe() renova sessão em /auth/me (o interceptor ignora essa rota de propósito).
+ */
 export const authGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
@@ -14,12 +17,14 @@ export const authGuard: CanActivateFn = () => {
   );
 };
 
-/** Bloqueia rotas públicas quando já há sessão ativa */
+/**
+ * Rotas públicas: se ainda há sessão (incluindo via refresh), manda ao dashboard.
+ */
 export const guestGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
-  return from(auth.fetchMe()).pipe(
+  return from(auth.fetchMe(true)).pipe(
     map(ok => (ok ? router.createUrlTree(['/dashboard']) : true)),
   );
 };
