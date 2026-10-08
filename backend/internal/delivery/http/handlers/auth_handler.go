@@ -165,13 +165,16 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	newAccessToken, err := h.authUC.RefreshToken(tokenStr)
+	newAccessToken, newRefreshToken, err := h.authUC.RefreshToken(tokenStr)
 	if err != nil {
+		// Se o refresh token é inválido, limpa os cookies
+		clearAuthCookies(c)
 		response.Error(c, http.StatusUnauthorized, "INVALID_REFRESH_TOKEN", "refresh token inválido ou expirado")
 		return
 	}
 
 	setAccessCookie(c, newAccessToken)
+	setRefreshCookie(c, newRefreshToken)
 
 	c.JSON(http.StatusOK, authResponse{Success: true})
 }
@@ -181,7 +184,6 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 //	@Summary		Encerra a sessão do usuário
 //	@Tags			auth
 //	@Produce		json
-//	@Security		CookieAuth
 //	@Success		200	{object}	authResponse
 //	@Router			/api/v1/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
@@ -201,7 +203,18 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 //	@Failure		404	{object}	response.ErrorResponse
 //	@Router			/api/v1/auth/me [get]
 func (h *AuthHandler) Me(c *gin.Context) {
-	claims := c.MustGet("user").(*jwt.Claims)
+	// CORREÇÃO: usar c.Get em vez de MustGet para evitar panic
+	claimsRaw, exists := c.Get("user")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, "INVALID_TOKEN", "token inválido")
+		return
+	}
+
+	claims, ok := claimsRaw.(*jwt.Claims)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "INVALID_TOKEN", "token inválido")
+		return
+	}
 
 	// claims.UserID é string — converte para uuid.UUID
 	id, err := uuid.Parse(claims.UserID)

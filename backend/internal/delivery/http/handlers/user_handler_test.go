@@ -37,7 +37,7 @@ type mockUserUseCase struct {
 
 	// auth
 	loginFn        func(email, password string) (string, string, error)
-	refreshTokenFn func(refreshToken string) (string, error)
+	refreshTokenFn func(refreshToken string) (string, string, error)
 }
 
 func (m *mockUserUseCase) Create(firstName, lastName, cpf, email, phone, password string, role entities.Role) (*entities.User, error) {

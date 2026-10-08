@@ -29,7 +29,7 @@ func (m *mockUserUseCase) Login(email, password string) (string, string, error) 
 	return m.loginFn(email, password)
 }
 
-func (m *mockUserUseCase) RefreshToken(refreshToken string) (string, error) {
+func (m *mockUserUseCase) RefreshToken(refreshToken string) (string, string, error) {
 	return m.refreshTokenFn(refreshToken)
 }
 
@@ -254,8 +254,8 @@ func TestLogin(t *testing.T) {
 func TestRefreshToken(t *testing.T) {
 	t.Run("renova access token com sucesso", func(t *testing.T) {
 		uc := &mockUserUseCase{
-			refreshTokenFn: func(token string) (string, error) {
-				return "new-access-token", nil
+			refreshTokenFn: func(token string) (string, string, error) {
+				return "new-access-token", "new-refresh-token", nil
 			},
 		}
 		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))
@@ -272,17 +272,23 @@ func TestRefreshToken(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 		assert.Equal(t, true, res["success"])
 
-		// Novo access_token deve estar no cookie
+		// Novos access_token e refresh_token devem estar nos cookies
 		cookies := w.Result().Cookies()
-		var accessCookie *http.Cookie
+		var accessCookie, refreshCookie *http.Cookie
 		for _, c := range cookies {
-			if c.Name == "access_token" {
+			switch c.Name {
+			case "access_token":
 				accessCookie = c
+			case "refresh_token":
+				refreshCookie = c
 			}
 		}
 		require.NotNil(t, accessCookie)
 		assert.Equal(t, "new-access-token", accessCookie.Value)
 		assert.True(t, accessCookie.HttpOnly)
+		require.NotNil(t, refreshCookie)
+		assert.Equal(t, "new-refresh-token", refreshCookie.Value)
+		assert.True(t, refreshCookie.HttpOnly)
 	})
 
 	t.Run("sem cookie refresh_token retorna 401", func(t *testing.T) {
@@ -301,8 +307,8 @@ func TestRefreshToken(t *testing.T) {
 
 	t.Run("refresh token inválido retorna 401", func(t *testing.T) {
 		uc := &mockUserUseCase{
-			refreshTokenFn: func(token string) (string, error) {
-				return "", errors.New("token expirado")
+			refreshTokenFn: func(token string) (string, string, error) {
+				return "", "", errors.New("token expirado")
 			},
 		}
 		r := newAuthTestRouter(handlers.NewAuthHandler(uc, uc))

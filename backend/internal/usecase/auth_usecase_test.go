@@ -115,9 +115,10 @@ func TestRefreshToken(t *testing.T) {
 	userUC := usecase.NewUserUseCase(repo)
 	authUC := usecase.NewAuthUseCase(userUC)
 
-	newAccessToken, err := authUC.RefreshToken(refreshToken)
+	newAccessToken, newRefreshToken, err := authUC.RefreshToken(refreshToken)
 	require.NoError(t, err)
 	assert.NotEmpty(t, newAccessToken)
+	assert.NotEmpty(t, newRefreshToken)
 }
 
 // TestRefreshTokenInvalid garante que refresh token inválido
@@ -130,7 +131,7 @@ func TestRefreshTokenInvalid(t *testing.T) {
 	userUC := usecase.NewUserUseCase(repo)
 	authUC := usecase.NewAuthUseCase(userUC)
 
-	newAccessToken, err := authUC.RefreshToken("token-invalido")
+	newAccessToken, _, err := authUC.RefreshToken("token-invalido")
 	require.Error(t, err)
 	assert.Empty(t, newAccessToken)
 	assert.Contains(t, err.Error(), "refresh token inválido")
@@ -156,7 +157,7 @@ func TestRefreshTokenUserNotFound(t *testing.T) {
 	userUC := usecase.NewUserUseCase(repo)
 	authUC := usecase.NewAuthUseCase(userUC)
 
-	newAccessToken, err := authUC.RefreshToken(refreshToken)
+	newAccessToken, _, err := authUC.RefreshToken(refreshToken)
 	require.Error(t, err)
 	assert.Empty(t, newAccessToken)
 	assert.Contains(t, err.Error(), "usuário não encontrado")
