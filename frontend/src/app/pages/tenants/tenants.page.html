@@ -1,0 +1,220 @@
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- HEADER -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<app-page-header 
+  title="Inquilinos" 
+  subtitle="Gerencie os locatários dos seus imóveis"
+  appAnimateOnView="fade-down"
+  [delay]="0">
+  <app-button icon="plus" label="Novo inquilino" (click)="openModal()" />
+</app-page-header>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SEÇÃO: BUSCA -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-4 sm:mb-6" appAnimateOnView="fade-up" [delay]="100">
+  <div class="flex flex-col sm:flex-row gap-3">
+    <div class="flex-1">
+      <app-input 
+        placeholder="Buscar por nome, CPF ou e-mail..." 
+        icon="search" 
+        [(ngModel)]="search" 
+        name="search" />
+    </div>
+    <app-select 
+      [options]="[{value:'all',label:'Todos os status'}, {value:'active',label:'Ativos'}, {value:'inactive',label:'Inativos'}]" 
+      [(ngModel)]="statusFilter" 
+      name="status"
+      placeholder="Status" />
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SEÇÃO: LISTAGEM -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section appAnimateOnView="fade-up" [delay]="200">
+  <!-- Header da seção com contador -->
+  @if (!loading() && filtered.length > 0) {
+    <div class="flex items-center gap-2 mb-3">
+      <app-icon name="users" size="sm" class="text-sky-500" />
+      <h2 class="text-sm font-semibold text-text-primary uppercase tracking-wide">
+        {{ filtered.length }} {{ filtered.length === 1 ? 'inquilino encontrado' : 'inquilinos encontrados' }}
+      </h2>
+      <div class="flex-1 h-px bg-border ml-2"></div>
+    </div>
+  }
+
+  @if (loading()) {
+    <app-card [fullHeight]="true">
+      <div class="space-y-3" appStagger="fade-up" [staggerDelay]="60">
+        @for (i of [1,2,3,4,5]; track i) { 
+          <app-skeleton height="3.5rem" /> 
+        }
+      </div>
+    </app-card>
+  } @else if (filtered.length === 0) {
+    <app-empty-state 
+      icon="users" 
+      title="Nenhum inquilino encontrado" 
+      description="Tente ajustar os filtros ou cadastre um novo inquilino.">
+      <app-button icon="plus" label="Novo inquilino" (click)="openModal()" />
+    </app-empty-state>
+  } @else {
+    <!-- Tabela desktop -->
+    <app-card [padding]="'none'" [fullHeight]="true" class="hidden sm:block">
+      <div class="overflow-x-auto rounded-2xl">
+        <table class="w-full text-sm">
+          <thead class="bg-bg-secondary text-text-secondary">
+            <tr>
+              <th class="px-4 py-3 text-left font-medium">Nome</th>
+              <th class="px-4 py-3 text-left font-medium">Contato</th>
+              <th class="px-4 py-3 text-left font-medium">Imóvel</th>
+              <th class="px-4 py-3 text-left font-medium">Status</th>
+              <th class="px-4 py-3 text-right font-medium">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border" appStagger="fade-up" [staggerDelay]="40">
+            @for (t of filtered; track t.id) {
+              <tr class="bg-bg-primary hover:bg-bg-secondary transition-colors">
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-3">
+                    <div class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-gradient text-white text-sm font-semibold shrink-0">{{ t.initials }}</div>
+                    <div class="min-w-0">
+                      <p class="font-medium text-text-primary truncate">{{ t.name }}</p>
+                      <p class="text-xs text-text-secondary">CPF: {{ t.cpf }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-text-secondary">
+                  <p class="truncate">{{ t.email }}</p>
+                  <p class="text-xs">{{ t.phone }}</p>
+                </td>
+                <td class="px-4 py-3 text-text-primary">{{ t.property }}</td>
+                <td class="px-4 py-3">
+                  <app-badge [variant]="t.status === 'Ativo' ? 'success' : 'danger'">
+                    {{ t.status }}
+                  </app-badge>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <div class="inline-flex gap-1">
+                    <app-button iconColor="info" variant="ghost" size="sm" icon="eye" aria-label="Visualizar" />
+                    <app-button iconColor="brand" variant="ghost" size="sm" icon="edit" aria-label="Editar" />
+                    <app-button iconColor="danger" variant="ghost" size="sm" icon="trash" aria-label="Excluir" />
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </app-card>
+
+    <!-- Cards mobile -->
+    <div class="sm:hidden space-y-3" appStagger="fade-up" [staggerDelay]="60">
+      @for (t of filtered; track t.id) {
+        <app-card [padding]="'sm'">
+          <div class="flex items-start gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient text-white text-sm font-semibold shrink-0">{{ t.initials }}</div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="font-medium text-text-primary truncate">{{ t.name }}</p>
+                  <p class="text-xs text-text-secondary">{{ t.cpf }}</p>
+                </div>
+                <app-badge [variant]="t.status === 'Ativo' ? 'success' : 'danger'">{{ t.status }}</app-badge>
+              </div>
+              <div class="mt-2 text-xs text-text-secondary space-y-0.5">
+                <p class="truncate">📧 {{ t.email }}</p>
+                <p>📱 {{ t.phone }}</p>
+                <p>🏠 {{ t.property }}</p>
+              </div>
+              <div class="mt-3 flex gap-1 border-t border-border pt-2">
+                <app-button iconColor="info" variant="ghost" size="sm" icon="eye" aria-label="Visualizar" />
+                <app-button iconColor="brand" variant="ghost" size="sm" icon="edit" aria-label="Editar" />
+                <app-button iconColor="danger" variant="ghost" size="sm" icon="trash" aria-label="Excluir" />
+              </div>
+            </div>
+          </div>
+        </app-card>
+      }
+    </div>
+  }
+</section>
+
+<!-- Modal -->
+<app-modal [open]="modalOpen()" title="Novo inquilino" (closed)="closeModal()" (keydown)="$event.key === 'Escape' && closeModal()">
+  <form (ngSubmit)="save()" class="space-y-6" id="tenant-form">
+    <!-- ═══ Dados Pessoais ═══ -->
+    <section>
+      <div class="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400">
+          <app-icon name="user" size="sm" />
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold text-text-primary">Dados pessoais</h4>
+          <p class="text-xs text-text-secondary">Informações básicas do inquilino</p>
+        </div>
+      </div>
+      
+      <div class="grid gap-4 sm:grid-cols-2">
+        <app-input label="Nome completo" [(ngModel)]="form.name" name="name" />
+        <app-input label="CPF" placeholder="000.000.000-00" [(ngModel)]="form.cpf" name="cpf" />
+        <app-input label="RG" [(ngModel)]="form.rg" name="rg" />
+        <app-input label="Data de nascimento" type="date" [(ngModel)]="form.birth" name="birth" />
+      </div>
+    </section>
+
+    <!-- ═══ Contato ═══ -->
+    <section>
+      <div class="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+          <app-icon name="mail" size="sm" />
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold text-text-primary">Contato</h4>
+          <p class="text-xs text-text-secondary">Formas de comunicação</p>
+        </div>
+      </div>
+      
+      <div class="grid gap-4 sm:grid-cols-2">
+        <app-input label="E-mail" type="email" [(ngModel)]="form.email" name="email" />
+        <app-input label="Telefone" placeholder="(00) 00000-0000" [(ngModel)]="form.phone" name="phone" />
+      </div>
+    </section>
+
+    <!-- ═══ Observações ═══ -->
+    <section>
+      <div class="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400">
+          <app-icon name="fileText" size="sm" />
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold text-text-primary">Observações</h4>
+          <p class="text-xs text-text-secondary">Informações adicionais (opcional)</p>
+        </div>
+      </div>
+      
+      <app-textarea 
+        label="Observações" 
+        [(ngModel)]="form.notes" 
+        name="notes"
+        placeholder="Ex: Tem animal de estimação, trabalha em casa, etc." />
+    </section>
+  </form>
+
+  <!-- ═══ Ações ═══ -->
+  <div class="mt-8 pt-5 border-t border-border flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+    <app-button 
+      variant="outline" 
+      (click)="closeModal()"
+      [full]="true">
+      Cancelar
+    </app-button>
+    <app-button 
+      type="submit" 
+      form="tenant-form" 
+      icon="check" 
+      label="Salvar inquilino"
+      [full]="true" />
+  </div>
+</app-modal>

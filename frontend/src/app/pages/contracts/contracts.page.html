@@ -1,0 +1,120 @@
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- HEADER -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<app-page-header 
+  title="Contratos" 
+  subtitle="Crie e gerencie contratos de locação"
+  appAnimateOnView="fade-down"
+  [delay]="0" />
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SEÇÃO: STEPPER -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-6" appAnimateOnView="fade-up" [delay]="100">
+  <div class="overflow-x-auto">
+    <div class="flex items-center min-w-max">
+      @for (step of steps; track step.id; let last = $last; let i = $index) {
+        <button 
+          (click)="goTo(step.id)" 
+          [class]="stepClass(step.id)" 
+          class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors">
+          <span 
+            class="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full border-2 border-current text-xs font-bold transition-all"
+            [class.bg-brand-500]="step.id < currentStep()"
+            [class.text-white]="step.id < currentStep()"
+            [class.border-brand-500]="step.id < currentStep()">
+            @if (step.id < currentStep()) {
+              <app-icon name="check" size="sm" />
+            } @else {
+              {{ step.id }}
+            }
+          </span>
+          <span class="hidden sm:inline">{{ step.label }}</span>
+        </button>
+        @if (!last) {
+          <div 
+            class="flex-1 h-0.5 mx-1 sm:mx-2 min-w-4 transition-colors"
+            [class.bg-brand-500]="step.id < currentStep()"
+            [class.bg-border]="step.id >= currentStep()">
+          </div>
+        }
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SEÇÃO: FORMULÁRIO -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section appAnimateOnView="fade-up" [delay]="200">
+  <app-card [fullHeight]="true">
+    <div class="p-4 sm:p-6" appAnimateOnView="fade-up" [delay]="50">
+      @switch (currentStep()) {
+        @case (1) {
+          <h3 class="text-lg font-semibold text-text-primary mb-4">Seleção de imóvel e inquilino</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <app-select label="Propriedade" [options]="properties" [(ngModel)]="contract.propertyId" name="property" />
+            <app-select label="Inquilino" [options]="tenants" [(ngModel)]="contract.tenantId" name="tenant" />
+          </div>
+        }
+        @case (2) {
+          <h3 class="text-lg font-semibold text-text-primary mb-4">Datas e valores</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <app-input label="Data de início" type="date" [(ngModel)]="contract.startDate" name="start" />
+            <app-input label="Data de término" type="date" [(ngModel)]="contract.endDate" name="end" />
+            <app-input label="Valor do aluguel (R$)" type="number" [(ngModel)]="contract.rent" name="rent" />
+            <app-input label="Dia de vencimento" type="number" [(ngModel)]="contract.dueDay" name="due" />
+          </div>
+        }
+        @case (3) {
+          <h3 class="text-lg font-semibold text-text-primary mb-4">Reajuste e garantia</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <app-select label="Índice de reajuste" [options]="indexes" [(ngModel)]="contract.index" name="index" />
+            <app-select label="Tipo de garantia" [options]="guarantees" [(ngModel)]="contract.guarantee" name="guarantee" />
+            <app-input label="Valor da garantia (R$)" type="number" [(ngModel)]="contract.guaranteeValue" name="gValue" />
+          </div>
+        }
+        @case (4) {
+          <h3 class="text-lg font-semibold text-text-primary mb-4">Regras e observações</h3>
+          <div class="space-y-4">
+            <app-textarea label="Cláusulas adicionais" placeholder="Descreva regras específicas do contrato..." [(ngModel)]="contract.rules" name="rules" />
+            <app-textarea label="Observações" placeholder="Observações gerais..." [(ngModel)]="contract.notes" name="notes" />
+          </div>
+        }
+        @case (5) {
+          <h3 class="text-lg font-semibold text-text-primary mb-4">Resumo do contrato</h3>
+          <app-alert variant="info">Revise as informações antes de salvar.</app-alert>
+          <dl class="mt-4 grid gap-3 sm:grid-cols-2" appStagger="fade-up" [staggerDelay]="40">
+            @for (item of summary(); track item.label) {
+              <div class="rounded-lg border border-border p-3">
+                <dt class="text-xs text-text-secondary">{{ item.label }}</dt>
+                <dd class="mt-1 text-sm font-medium text-text-primary">{{ item.value }}</dd>
+              </div>
+            }
+          </dl>
+        }
+      }
+    </div>
+
+    <div class="px-4 sm:px-6 py-4 flex items-center justify-between border-t border-border">
+      <app-button 
+        variant="outline" 
+        [disabled]="currentStep() === 1" 
+        (click)="prev()" 
+        icon="arrowLeft" 
+        label="Anterior" />
+      
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-text-secondary hidden sm:inline">
+          Passo {{ currentStep() }} de {{ steps.length }}
+        </span>
+        
+        @if (currentStep() < steps.length) {
+          <app-button (click)="next()" label="Próximo" icon="arrowRight" />
+        } @else {
+          <app-button icon="check" label="Salvar contrato" (click)="save()" />
+        }
+      </div>
+    </div>
+  </app-card>
+</section>

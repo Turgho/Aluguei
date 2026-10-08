@@ -1,0 +1,144 @@
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- HEADER -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<app-page-header 
+  title="Relatórios" 
+  subtitle="Gere relatórios financeiros e operacionais"
+  appAnimateOnView="fade-down"
+  [delay]="0" />
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SEÇÃO: FILTROS -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-4 sm:mb-6" appAnimateOnView="fade-up" [delay]="100">
+  <app-card [fullHeight]="true">
+    <div class="p-4 sm:p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <app-icon name="filter" size="sm" class="text-brand-500" />
+        <h3 class="text-base sm:text-lg font-semibold text-text-primary">Filtros</h3>
+      </div>
+      
+      <div class="grid gap-3 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.2fr_1.2fr_1.2fr]">
+        <app-input label="Data início" type="date" [(ngModel)]="filters.start" name="start" />
+        <app-input label="Data fim" type="date" [(ngModel)]="filters.end" name="end" />
+        <app-select label="Imóvel" [options]="[{value:'all',label:'Todos'}, {value:'1',label:'Apto 302'}]" [(ngModel)]="filters.property" name="property" />
+        <app-select label="Inquilino" [options]="[{value:'all',label:'Todos'}, {value:'1',label:'Carlos'}]" [(ngModel)]="filters.tenant" name="tenant" />
+        <app-select label="Status" [options]="[{value:'all',label:'Todos'}, {value:'paid',label:'Pago'}, {value:'late',label:'Atrasado'}]" [(ngModel)]="filters.status" name="status" />
+      </div>
+      
+      <div class="mt-4 flex flex-wrap gap-2 justify-end">
+        <app-button variant="outline" icon="download" label="PDF" size="sm" (click)="export('pdf')" />
+        <app-button variant="outline" icon="download" label="CSV" size="sm" (click)="export('csv')" />
+        <app-button variant="outline" icon="download" label="XLSX" size="sm" (click)="export('xlsx')" />
+        <app-button icon="filter" label="Aplicar" size="sm" (click)="apply()" />
+      </div>
+    </div>
+  </app-card>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SEÇÃO: KPIs -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-4 sm:mb-6" appAnimateOnView="fade-up" [delay]="200">
+  <div class="flex items-center gap-2 mb-3">
+    <app-icon name="chart" size="sm" class="text-emerald-500" />
+    <h2 class="text-sm font-semibold text-text-primary uppercase tracking-wide">Resumo do Período</h2>
+    <div class="flex-1 h-px bg-border ml-2"></div>
+  </div>
+  
+  <div class="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4 items-stretch" appStagger="fade-up" [staggerDelay]="80">
+    @if (loading()) {
+      @for (i of [1,2,3,4]; track i) {
+        <app-card [fullHeight]="true">
+          <app-skeleton height="5rem" />
+        </app-card>
+      }
+    } @else {
+      <app-stat-card label="Total recebido" value="R$ 94.800" delta="+14,2%" icon="money" color="emerald" />
+      <app-stat-card label="Total pendente" value="R$ 6.300" icon="warning" color="amber" />
+      <app-stat-card label="Contratos ativos" value="12" icon="file" color="brand" />
+      <app-stat-card label="Taxa de ocupação" value="92%" icon="chart" color="sky" />
+    }
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SEÇÃO: MOVIMENTAÇÕES -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section appAnimateOnView="fade-up" [delay]="300">
+  <app-card [padding]="'none'" [fullHeight]="true">
+    <div class="p-4 sm:p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <app-icon name="file" size="sm" class="text-brand-500" />
+          <h3 class="text-base sm:text-lg font-semibold text-text-primary">Movimentações do período</h3>
+        </div>
+        <app-badge variant="brand">{{ rows.length }} registros</app-badge>
+      </div>
+      
+      @if (loading()) {
+        <div class="space-y-2" appStagger="fade-up" [staggerDelay]="40">
+          @for (i of [1,2,3,4,5]; track i) { 
+            <app-skeleton height="3rem" /> 
+          }
+        </div>
+      } @else if (rows.length === 0) {
+        <app-empty-state 
+          icon="chart" 
+          title="Sem resultados" 
+          description="Ajuste os filtros e tente novamente." />
+      } @else {
+        <!-- Tabela desktop -->
+        <div class="hidden sm:block overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-bg-secondary text-text-secondary">
+              <tr>
+                <th class="px-4 py-3 text-left font-medium">Data</th>
+                <th class="px-4 py-3 text-left font-medium">Inquilino</th>
+                <th class="px-4 py-3 text-left font-medium">Imóvel</th>
+                <th class="px-4 py-3 text-right font-medium">Valor</th>
+                <th class="px-4 py-3 text-center font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border" appStagger="fade-up" [staggerDelay]="40">
+              @for (r of rows; track r.id) {
+                <tr class="bg-bg-primary hover:bg-bg-secondary transition-colors">
+                  <td class="px-4 py-3 text-text-secondary">{{ r.date }}</td>
+                  <td class="px-4 py-3 text-text-primary">{{ r.tenant }}</td>
+                  <td class="px-4 py-3 text-text-secondary">{{ r.property }}</td>
+                  <td class="px-4 py-3 text-right font-semibold text-text-primary">{{ r.value }}</td>
+                  <td class="px-4 py-3 text-center">
+                    <app-badge [variant]="r.status === 'Pago' ? 'success' : r.status === 'Pendente' ? 'warning' : 'danger'">
+                      {{ r.status }}
+                    </app-badge>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Cards mobile -->
+        <div class="sm:hidden space-y-3" appStagger="fade-up" [staggerDelay]="60">
+          @for (r of rows; track r.id) {
+            <div class="rounded-lg border border-border p-3">
+              <div class="flex items-start justify-between mb-2">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-text-primary truncate">{{ r.tenant }}</p>
+                  <p class="text-xs text-text-secondary">{{ r.property }}</p>
+                </div>
+                <app-badge [variant]="r.status === 'Pago' ? 'success' : r.status === 'Pendente' ? 'warning' : 'danger'">
+                  {{ r.status }}
+                </app-badge>
+              </div>
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-text-secondary">{{ r.date }}</span>
+                <span class="font-semibold text-text-primary">{{ r.value }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </app-card>
+</section>
