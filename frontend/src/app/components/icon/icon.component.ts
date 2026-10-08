@@ -18,7 +18,7 @@ import { ICONS, IconName } from '../../shared/icons';
 export class IconComponent {
   @Input({ required: true }) name!: IconName;
   @Input() size: 'sm' | 'md' | 'lg' = 'md';
-  @Input() brand = false; // 👈 novo: desativa stroke/fill fixo para logos
+  @Input() brand = false;
 
   private sanitizer = inject(DomSanitizer);
 

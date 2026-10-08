@@ -8,7 +8,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
   template: `
     <div class="w-full">
       @if (label) {
-        <label class="mb-2 block text-sm font-medium text-text-primary">{{ label }}</label>
+        <label class="my-1.5 block text-sm font-medium text-text-primary">{{ label }}</label>
       }
       <div class="relative">
         <select
