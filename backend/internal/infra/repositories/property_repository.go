@@ -128,10 +128,3 @@ func (r *propertyRepository) Search(filters domain.PropertyFilters) ([]*entities
 }
 
 // ── Controle de propriedade ─────────────────────────────────────────────────────────
-
-// SetPublished implements [repositories.PropertyRepository].
-func (r *propertyRepository) SetPublished(id uuid.UUID, published bool) error {
-	return r.db.Model(&entities.Property{}).
-		Where("id = ?", id).
-		Update("is_published", true).Error
-}

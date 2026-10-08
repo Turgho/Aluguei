@@ -18,7 +18,6 @@ CREATE TABLE properties (
     pet_friendly          BOOLEAN      NOT NULL DEFAULT FALSE,
     has_balcony           BOOLEAN      NOT NULL DEFAULT FALSE,
     has_elevator          BOOLEAN      NOT NULL DEFAULT FALSE,
-    is_published          BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     deleted_at            TIMESTAMPTZ,
@@ -34,6 +33,5 @@ CREATE INDEX idx_properties_owner_id ON properties(owner_id);
 CREATE INDEX idx_properties_address_id ON properties(address_id);
 CREATE INDEX idx_properties_type ON properties(type);
 CREATE INDEX idx_properties_status ON properties(status);
-CREATE INDEX idx_properties_is_published ON properties(is_published);
 CREATE INDEX idx_properties_price_cents ON properties(price_cents);
 CREATE INDEX idx_properties_deleted_at ON properties(deleted_at);

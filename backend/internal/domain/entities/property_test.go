@@ -407,10 +407,6 @@ func assertProperty(t *testing.T, property *entities.Property, tt propertyTestCa
 		)
 	}
 
-	if property.IsPublished {
-		t.Error("IsPublished deveria ser false")
-	}
-
 	if property.CreatedAt.IsZero() {
 		t.Error("CreatedAt não deveria ser zero")
 	}

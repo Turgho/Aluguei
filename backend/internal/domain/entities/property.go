@@ -67,9 +67,6 @@ type Property struct {
 	HasBalcony  bool `gorm:"not null;default:false"`
 	HasElevator bool `gorm:"not null;default:false"`
 
-	// Controle do anúncio
-	IsPublished bool `gorm:"not null;default:false"`
-
 	CreatedAt time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
 	DeletedAt gorm.DeletedAt `gorm:"index"`
@@ -187,7 +184,6 @@ func NewProperty(
 		PetFriendly:         petFriendly,
 		HasBalcony:          hasBalcony,
 		HasElevator:         hasElevator,
-		IsPublished:         false,
 		CreatedAt:           now,
 		UpdatedAt:           now,
 	}, nil

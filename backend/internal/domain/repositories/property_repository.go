@@ -35,7 +35,4 @@ type PropertyRepository interface {
 	// Busca tipada com paginação
 	Search(filters PropertyFilters) ([]*entities.Property, int64, error)
 	//                               ↑ resultado       ↑ total para paginação
-
-	// Controle de publicação
-	SetPublished(id uuid.UUID, published bool) error
 }
