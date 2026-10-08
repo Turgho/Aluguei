@@ -1,13 +1,14 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { SidebarComponent } from '../../components/sidebar/sidebar.component';
-import { TopbarComponent } from '../../components/topbar/topbar.component';
-import { ThemeService } from '../theme/theme.service';
+import { SidebarComponent } from './sidebar/sidebar.component';
+import { TopbarComponent } from './topbar/topbar.component';
+import { FooterComponent } from './footer/footer.component';
+import { ThemeService } from '../../core/theme/theme.service';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, TopbarComponent],
+  imports: [RouterOutlet, SidebarComponent, TopbarComponent, FooterComponent],
   template: `
     <div class="flex min-h-screen bg-bg-secondary">
       <!-- Sidebar -->
@@ -23,9 +24,14 @@ import { ThemeService } from '../theme/theme.service';
       <!-- Conteúdo principal -->
       <div class="flex flex-1 flex-col min-w-0">
         <app-topbar (toggleMenu)="sidebarOpen.update(v => !v)" />
+        
+        <!-- Main com flex-1 para empurrar o footer para baixo -->
         <main class="flex-1 p-4 lg:p-6 overflow-x-hidden">
           <router-outlet />
         </main>
+        
+        <!-- Footer slim (aparece em todas as páginas autenticadas) -->
+        <app-footer variant="slim" />
       </div>
     </div>
   `,
